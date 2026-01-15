@@ -16,7 +16,6 @@ class BassScalesApp extends StatelessWidget {
         brightness: Brightness.dark,
         primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: const Color(0xFF121212),
-        // Customizing the switch color to match our purple theme
         switchTheme: SwitchThemeData(
           thumbColor: MaterialStateProperty.resolveWith((states) {
             if (states.contains(MaterialState.selected)) return Colors.deepPurple;
@@ -48,35 +47,39 @@ class _FretboardPageState extends State<FretboardPage> {
     'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'
   ];
 
-  // Map Semitones (0-11) to Interval Names
   final Map<int, String> intervalNames = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4',
     6: 'b5', 7: '5', 8: 'b6', 9: '6', 10: 'b7', 11: '7'
   };
 
-  // Tuning Definitions (Top String visually -> Bottom String visually)
-  // High Pitch -> Low Pitch
   final Map<int, List<int>> tunings = {
     4: [7, 2, 9, 4],             // G, D, A, E
-    5: [7, 2, 9, 4, 11],         // G, D, A, E, B (Low B)
-    6: [0, 7, 2, 9, 4, 11],      // C, G, D, A, E, B (High C + Low B)
+    5: [7, 2, 9, 4, 11],         // G, D, A, E, B
+    6: [0, 7, 2, 9, 4, 11],      // C, G, D, A, E, B
   };
 
   final Map<String, List<int>> scaleFormulas = {
+    // --- Common ---
     'Major': [2, 2, 1, 2, 2, 2, 1],
     'Natural Minor': [2, 1, 2, 2, 1, 2, 2],
     'Pentatonic Minor': [3, 2, 2, 3, 2],
     'Pentatonic Major': [2, 2, 3, 2, 3],
     'Blues': [3, 2, 1, 1, 3, 2],
+    // --- Modes ---
     'Dorian': [2, 1, 2, 2, 2, 1, 2],
     'Mixolydian': [2, 2, 1, 2, 2, 1, 2],
+    'Phrygian Dominant': [1, 3, 1, 2, 1, 2, 2],
+    // --- Advanced ---
+    'Harmonic Minor': [2, 1, 2, 2, 1, 3, 1],
+    'Melodic Minor': [2, 1, 2, 2, 2, 2, 1],
+    'Prometheus': [2, 2, 2, 3, 1, 2], // Renamed per request
   };
 
   // --- STATE ---
   String selectedRoot = 'C';
-  String selectedScale = 'Mixolydian';
-  int stringCount = 4;        // Default to 4 strings
-  bool showIntervals = false; // Default to Note Names
+  String selectedScale = 'Major'; // UPDATED: Default to Major
+  int stringCount = 4;
+  bool showIntervals = false;
 
   // --- LOGIC ---
   Set<String> calculateScaleNotes() {
@@ -115,7 +118,53 @@ class _FretboardPageState extends State<FretboardPage> {
                 const Text("Settings", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 30),
 
-                // --- 1. STRING COUNT ---
+                // --- 1. ROOT NOTE ---
+                const Text("ROOT NOTE", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                DropdownButton<String>(
+                  isExpanded: true,
+                  value: selectedRoot,
+                  dropdownColor: Colors.grey[800],
+                  style: const TextStyle(color: Colors.white, fontSize: 22),
+                  underline: Container(height: 2, color: Colors.deepPurple),
+                  items: chromaticScale.map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
+                  onChanged: (v) => setState(() => selectedRoot = v!),
+                ),
+
+                const SizedBox(height: 30),
+
+                // --- 2. SCALE TYPE ---
+                const Text("SCALE TYPE", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                DropdownButton<String>(
+                  isExpanded: true,
+                  value: selectedScale,
+                  dropdownColor: Colors.grey[800],
+                  style: const TextStyle(color: Colors.amber, fontSize: 22),
+                  underline: Container(height: 2, color: Colors.amber),
+                  items: scaleFormulas.keys.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  onChanged: (v) => setState(() => selectedScale = v!),
+                ),
+
+                const SizedBox(height: 30),
+
+                // --- 3. SHOW INTERVALS ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("SHOW INTERVALS", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                    Switch(
+                      value: showIntervals,
+                      onChanged: (val) => setState(() => showIntervals = val),
+                    ),
+                  ],
+                ),
+                const Text(
+                  "Note Names (C) vs Intervals (R, 3, 5)",
+                  style: TextStyle(color: Colors.grey, fontSize: 10, fontStyle: FontStyle.italic),
+                ),
+
+                const SizedBox(height: 30),
+
+                // --- 4. STRINGS ---
                 const Text("STRINGS", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 Row(
@@ -142,53 +191,6 @@ class _FretboardPageState extends State<FretboardPage> {
                       ),
                     );
                   }).toList(),
-                ),
-
-                const SizedBox(height: 30),
-
-                // --- 2. DISPLAY MODE (TOGGLE) ---
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("SHOW INTERVALS", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-                    Switch(
-                      value: showIntervals,
-                      onChanged: (val) => setState(() => showIntervals = val),
-                    ),
-                  ],
-                ),
-                const Text(
-                  "Switch between Note Names (C, E, G) and Intervals (R, 3, 5)",
-                  style: TextStyle(color: Colors.grey, fontSize: 10, fontStyle: FontStyle.italic),
-                ),
-
-                const SizedBox(height: 30),
-                const Divider(color: Colors.grey),
-                const SizedBox(height: 20),
-
-                // --- 3. MUSIC SETTINGS ---
-                const Text("ROOT NOTE", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-                DropdownButton<String>(
-                  isExpanded: true,
-                  value: selectedRoot,
-                  dropdownColor: Colors.grey[800],
-                  style: const TextStyle(color: Colors.white, fontSize: 22),
-                  underline: Container(height: 2, color: Colors.deepPurple),
-                  items: chromaticScale.map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
-                  onChanged: (v) => setState(() => selectedRoot = v!),
-                ),
-
-                const SizedBox(height: 30),
-
-                const Text("SCALE TYPE", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-                DropdownButton<String>(
-                  isExpanded: true,
-                  value: selectedScale,
-                  dropdownColor: Colors.grey[800],
-                  style: const TextStyle(color: Colors.amber, fontSize: 22),
-                  underline: Container(height: 2, color: Colors.amber),
-                  items: scaleFormulas.keys.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                  onChanged: (v) => setState(() => selectedScale = v!),
                 ),
 
                 const SizedBox(height: 40),
@@ -261,7 +263,6 @@ class FretboardPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // --- DYNAMIC SIZING ---
-    // Scale everything down if we have more strings to avoid crowding
     int stringCount = stringOpenNotes.length;
     double dotRadius = stringCount == 4 ? 24.0 : (stringCount == 5 ? 21.0 : 18.0);
     double fontSize = stringCount == 4 ? 20.0 : 16.0;
@@ -273,7 +274,7 @@ class FretboardPainter extends CustomPainter {
 
     final paintString = Paint()
       ..color = Colors.white
-      ..strokeWidth = stringCount > 5 ? 3 : 4; // Thinner strings for 6-string bass
+      ..strokeWidth = stringCount > 5 ? 3 : 4;
 
     final paintFret = Paint()
       ..color = Colors.grey[400]!
@@ -292,13 +293,11 @@ class FretboardPainter extends CustomPainter {
     double bottomPadding = 50.0;
 
     double boardHeight = size.height - topPadding - bottomPadding;
-
-    // DYNAMIC SPACING: Divide height by (strings - 1)
     double stringSpacing = boardHeight / (stringCount - 1);
 
     double fretWidth = size.width / 25;
 
-    // 0. DRAW INLAYS (Background Markers)
+    // 0. DRAW INLAYS
     List<int> singleDots = [3, 5, 7, 9, 15, 17, 19, 21];
     List<int> doubleDots = [12, 24];
 
@@ -311,8 +310,6 @@ class FretboardPainter extends CustomPainter {
 
     for (int fret in doubleDots) {
       double x = (fret * fretWidth) - (fretWidth / 2);
-      // For double dots, we want them separated nicely.
-      // Use 1.2x spacing as a safe offset
       double offset = stringCount == 4 ? 60 : 45;
       canvas.drawCircle(Offset(x, midY - offset), 18, paintInlay);
       canvas.drawCircle(Offset(x, midY + offset), 18, paintInlay);
@@ -374,12 +371,9 @@ class FretboardPainter extends CustomPainter {
           canvas.drawCircle(Offset(x, y), dotRadius, dotPaint);
           canvas.drawCircle(Offset(x, y), dotRadius, borderPaint);
 
-          // DETERMINE TEXT TO DISPLAY
           String textToDraw = noteName;
 
           if (showIntervals) {
-            // Calculate semitone distance from root
-            // Add 12 to handle wrap-around (e.g. Root is B, current is C)
             int semitoneDistance = (currentNoteIndex - rootIndex + 12) % 12;
             textToDraw = intervalNames[semitoneDistance] ?? "?";
           }
