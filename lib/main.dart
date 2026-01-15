@@ -16,6 +16,17 @@ class BassScalesApp extends StatelessWidget {
         brightness: Brightness.dark,
         primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: const Color(0xFF121212),
+        // Customizing the switch color to match our purple theme
+        switchTheme: SwitchThemeData(
+          thumbColor: MaterialStateProperty.resolveWith((states) {
+            if (states.contains(MaterialState.selected)) return Colors.deepPurple;
+            return Colors.grey;
+          }),
+          trackColor: MaterialStateProperty.resolveWith((states) {
+            if (states.contains(MaterialState.selected)) return Colors.deepPurple.shade200;
+            return Colors.grey.shade800;
+          }),
+        ),
       ),
       home: const FretboardPage(),
     );
@@ -37,7 +48,19 @@ class _FretboardPageState extends State<FretboardPage> {
     'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'
   ];
 
-  final List<int> stringOpenNotes = [7, 2, 9, 4]; // G, D, A, E
+  // Map Semitones (0-11) to Interval Names
+  final Map<int, String> intervalNames = {
+    0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4',
+    6: 'b5', 7: '5', 8: 'b6', 9: '6', 10: 'b7', 11: '7'
+  };
+
+  // Tuning Definitions (Top String visually -> Bottom String visually)
+  // High Pitch -> Low Pitch
+  final Map<int, List<int>> tunings = {
+    4: [7, 2, 9, 4],             // G, D, A, E
+    5: [7, 2, 9, 4, 11],         // G, D, A, E, B (Low B)
+    6: [0, 7, 2, 9, 4, 11],      // C, G, D, A, E, B (High C + Low B)
+  };
 
   final Map<String, List<int>> scaleFormulas = {
     'Major': [2, 2, 1, 2, 2, 2, 1],
@@ -49,8 +72,11 @@ class _FretboardPageState extends State<FretboardPage> {
     'Mixolydian': [2, 2, 1, 2, 2, 1, 2],
   };
 
+  // --- STATE ---
   String selectedRoot = 'C';
   String selectedScale = 'Mixolydian';
+  int stringCount = 4;        // Default to 4 strings
+  bool showIntervals = false; // Default to Note Names
 
   // --- LOGIC ---
   Set<String> calculateScaleNotes() {
@@ -71,24 +97,77 @@ class _FretboardPageState extends State<FretboardPage> {
   @override
   Widget build(BuildContext context) {
     Set<String> activeNotes = calculateScaleNotes();
+    List<int> currentTuning = tunings[stringCount]!;
 
     return Scaffold(
       key: _scaffoldKey,
 
-      // DRAWER MENU (Wrapped in ScrollView to fix overflow)
+      // DRAWER MENU
       drawer: Drawer(
-        width: 300,
+        width: 320,
         backgroundColor: Colors.grey[900],
-        child: SingleChildScrollView( // <--- THIS FIXES THE STRIPED ERROR
+        child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 50, horizontal: 20),
+            padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text("Settings", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)),
-                const SizedBox(height: 40),
+                const SizedBox(height: 30),
 
-                const Text("ROOT NOTE", style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold)),
+                // --- 1. STRING COUNT ---
+                const Text("STRINGS", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [4, 5, 6].map((count) {
+                    bool isSelected = (stringCount == count);
+                    return GestureDetector(
+                      onTap: () => setState(() => stringCount = count),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.deepPurple : Colors.grey[800],
+                          borderRadius: BorderRadius.circular(8),
+                          border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
+                        ),
+                        child: Text(
+                          "$count",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? Colors.white : Colors.grey[400]
+                          )
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 30),
+
+                // --- 2. DISPLAY MODE (TOGGLE) ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("SHOW INTERVALS", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                    Switch(
+                      value: showIntervals,
+                      onChanged: (val) => setState(() => showIntervals = val),
+                    ),
+                  ],
+                ),
+                const Text(
+                  "Switch between Note Names (C, E, G) and Intervals (R, 3, 5)",
+                  style: TextStyle(color: Colors.grey, fontSize: 10, fontStyle: FontStyle.italic),
+                ),
+
+                const SizedBox(height: 30),
+                const Divider(color: Colors.grey),
+                const SizedBox(height: 20),
+
+                // --- 3. MUSIC SETTINGS ---
+                const Text("ROOT NOTE", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
                 DropdownButton<String>(
                   isExpanded: true,
                   value: selectedRoot,
@@ -99,9 +178,9 @@ class _FretboardPageState extends State<FretboardPage> {
                   onChanged: (v) => setState(() => selectedRoot = v!),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 30),
 
-                const Text("SCALE TYPE", style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold)),
+                const Text("SCALE TYPE", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
                 DropdownButton<String>(
                   isExpanded: true,
                   value: selectedScale,
@@ -112,7 +191,7 @@ class _FretboardPageState extends State<FretboardPage> {
                   onChanged: (v) => setState(() => selectedScale = v!),
                 ),
 
-                const SizedBox(height: 60), // Space before button
+                const SizedBox(height: 40),
 
                 Center(
                   child: ElevatedButton.icon(
@@ -149,9 +228,11 @@ class _FretboardPageState extends State<FretboardPage> {
             size: const Size(3200, 350),
             painter: FretboardPainter(
               chromaticScale: chromaticScale,
-              stringOpenNotes: stringOpenNotes,
+              stringOpenNotes: currentTuning,
               rootNote: selectedRoot,
               activeNotes: activeNotes,
+              showIntervals: showIntervals,
+              intervalNames: intervalNames,
             ),
           ),
         ),
@@ -165,16 +246,26 @@ class FretboardPainter extends CustomPainter {
   final List<int> stringOpenNotes;
   final String rootNote;
   final Set<String> activeNotes;
+  final bool showIntervals;
+  final Map<int, String> intervalNames;
 
   FretboardPainter({
     required this.chromaticScale,
     required this.stringOpenNotes,
     required this.rootNote,
     required this.activeNotes,
+    required this.showIntervals,
+    required this.intervalNames,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    // --- DYNAMIC SIZING ---
+    // Scale everything down if we have more strings to avoid crowding
+    int stringCount = stringOpenNotes.length;
+    double dotRadius = stringCount == 4 ? 24.0 : (stringCount == 5 ? 21.0 : 18.0);
+    double fontSize = stringCount == 4 ? 20.0 : 16.0;
+
     // --- STYLES ---
     final paintLine = Paint()
       ..color = Colors.grey
@@ -182,7 +273,7 @@ class FretboardPainter extends CustomPainter {
 
     final paintString = Paint()
       ..color = Colors.white
-      ..strokeWidth = 4;
+      ..strokeWidth = stringCount > 5 ? 3 : 4; // Thinner strings for 6-string bass
 
     final paintFret = Paint()
       ..color = Colors.grey[400]!
@@ -193,7 +284,6 @@ class FretboardPainter extends CustomPainter {
       ..strokeWidth = 10;
 
     final paintInlay = Paint()
-      // Slightly more visible (0.12 -> 0.18) since you asked!
       ..color = Colors.white.withOpacity(0.18)
       ..style = PaintingStyle.fill;
 
@@ -202,7 +292,9 @@ class FretboardPainter extends CustomPainter {
     double bottomPadding = 50.0;
 
     double boardHeight = size.height - topPadding - bottomPadding;
-    double stringSpacing = boardHeight / 3;
+
+    // DYNAMIC SPACING: Divide height by (strings - 1)
+    double stringSpacing = boardHeight / (stringCount - 1);
 
     double fretWidth = size.width / 25;
 
@@ -212,29 +304,23 @@ class FretboardPainter extends CustomPainter {
 
     double midY = topPadding + (boardHeight / 2);
 
-    // Draw Single Dots (Center of board)
     for (int fret in singleDots) {
       double x = (fret * fretWidth) - (fretWidth / 2);
       canvas.drawCircle(Offset(x, midY), 18, paintInlay);
     }
 
-    // Draw Double Dots (Spread vertically)
     for (int fret in doubleDots) {
       double x = (fret * fretWidth) - (fretWidth / 2);
-
-      // FIX: Move them into the outer gaps (between strings 1-2 and 3-4)
-      // This puts them nicely away from the center strings
-      double topDotY = midY - stringSpacing;
-      double bottomDotY = midY + stringSpacing;
-
-      canvas.drawCircle(Offset(x, topDotY), 18, paintInlay);
-      canvas.drawCircle(Offset(x, bottomDotY), 18, paintInlay);
+      // For double dots, we want them separated nicely.
+      // Use 1.2x spacing as a safe offset
+      double offset = stringCount == 4 ? 60 : 45;
+      canvas.drawCircle(Offset(x, midY - offset), 18, paintInlay);
+      canvas.drawCircle(Offset(x, midY + offset), 18, paintInlay);
     }
 
     // 1. DRAW FRETS
     for (int i = 0; i <= 24; i++) {
       double x = i * fretWidth;
-
       double lineBottom = topPadding + boardHeight;
 
       if (i == 0) {
@@ -255,13 +341,15 @@ class FretboardPainter extends CustomPainter {
     }
 
     // 2. DRAW STRINGS
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < stringCount; i++) {
       double y = topPadding + (i * stringSpacing);
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paintString);
     }
 
     // 3. DRAW NOTES
-    for (int stringIdx = 0; stringIdx < 4; stringIdx++) {
+    int rootIndex = chromaticScale.indexOf(rootNote);
+
+    for (int stringIdx = 0; stringIdx < stringCount; stringIdx++) {
       int openNoteIndex = stringOpenNotes[stringIdx];
 
       for (int fret = 0; fret <= 24; fret++) {
@@ -273,8 +361,6 @@ class FretboardPainter extends CustomPainter {
           double y = topPadding + (stringIdx * stringSpacing);
 
           bool isRoot = (noteName == rootNote);
-
-          double dotRadius = 24.0;
 
           Paint dotPaint = Paint()
             ..color = isRoot ? Colors.red : Colors.black
@@ -288,13 +374,23 @@ class FretboardPainter extends CustomPainter {
           canvas.drawCircle(Offset(x, y), dotRadius, dotPaint);
           canvas.drawCircle(Offset(x, y), dotRadius, borderPaint);
 
+          // DETERMINE TEXT TO DISPLAY
+          String textToDraw = noteName;
+
+          if (showIntervals) {
+            // Calculate semitone distance from root
+            // Add 12 to handle wrap-around (e.g. Root is B, current is C)
+            int semitoneDistance = (currentNoteIndex - rootIndex + 12) % 12;
+            textToDraw = intervalNames[semitoneDistance] ?? "?";
+          }
+
           TextSpan span = TextSpan(
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: fontSize,
               fontWeight: FontWeight.bold
             ),
-            text: noteName
+            text: textToDraw
           );
           TextPainter tp = TextPainter(text: span, textDirection: TextDirection.ltr);
           tp.layout();
