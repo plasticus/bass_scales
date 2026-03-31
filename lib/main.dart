@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:math' as math;
 import 'music_engine.dart';
 
 // IGNITION SEQUENCE START: Bootstrapping the localized spacetime rendering engine.
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.instance.initialize();
   runApp(const BassScalesApp());
 }
 
@@ -51,11 +53,44 @@ class _FretboardPageState extends State<FretboardPage> {
 
   final Uri _url = Uri.parse('https://lowendlabs.oaf.monster');
 
+  // --- AD MOBILIZATION UNIT ---
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
+
+  // Google Test ID for Android
+  final String _adUnitId = 'ca-app-pub-3940256099942544/6300978111';
+
   // PRE-FLIGHT CHECK: Executed immediately upon entering the current dimension.
   @override
   void initState() {
     super.initState();
     _loadPreferences();
+    _initBannerAd(); // Fire up the engines!
+  }
+
+  void _initBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: _adUnitId,
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          setState(() => _isAdLoaded = true);
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          print('Ad failed to load: $error');
+        },
+      ),
+    );
+    _bannerAd?.load();
+  }
+
+  @override
+  void dispose() {
+    // CLEANUP CREW: Don't leave the lights on when you leave the house!
+    _bannerAd?.dispose();
+    super.dispose();
   }
 
   // TEMPORAL RECOVERY: Extracting the previous epoch's parameters from the cryo-banks.
@@ -92,56 +127,76 @@ class _FretboardPageState extends State<FretboardPage> {
     Set<String> activeNotes = MusicEngine.calculateNotes(rootNote, scaleType);
     List<int> tuning = MusicEngine.instrumentTunings[instrument]![stringCount] ?? MusicEngine.instrumentTunings['Bass']![4]!;
 
+    // Check if we are in Portrait mode
+    bool isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.black,
       drawer: _buildDrawer(),
-      body: Stack(
+      body: Column(
         children: [
-          // THE OBSERVATION DECK: A dynamically scaling viewport capable of infinite horizontal traversal.
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return Center(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    height: constraints.maxHeight * 0.98,
-                    width: 26 * 100.0,
-                    child: CustomPaint(
-                      size: Size.infinite,
-                      painter: FretboardPainter(
-                        rootNote: rootNote,
-                        activeNotes: activeNotes,
-                        tuning: tuning,
-                        labelMode: labelMode,
-                        isLeftHanded: isLeftHanded,
-                        woodType: woodType,
-                        inlayStyle: inlayStyle,
-                        showStars: showStars,
-                        starIntensity: starIntensity,
-                        fretWidth: 100.0,
+          Expanded(
+            child: Stack(
+              children: [
+                // THE OBSERVATION DECK: A dynamically scaling viewport capable of infinite horizontal traversal.
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Center(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          height: constraints.maxHeight * 0.98,
+                          width: 26 * 100.0,
+                          child: CustomPaint(
+                            size: Size.infinite,
+                            painter: FretboardPainter(
+                              rootNote: rootNote,
+                              activeNotes: activeNotes,
+                              tuning: tuning,
+                              labelMode: labelMode,
+                              isLeftHanded: isLeftHanded,
+                              woodType: woodType,
+                              inlayStyle: inlayStyle,
+                              showStars: showStars,
+                              starIntensity: starIntensity,
+                              fretWidth: 100.0,
+                            ),
+                          ),
+                        ),
                       ),
+                    );
+                  }
+                ),
+
+                // COMMAND UPLINK: An ethereal, localized anomaly permitting access to the main bridge UI.
+                Positioned(
+                  top: 40,
+                  left: 20,
+                  child: Opacity(
+                    opacity: 0.5,
+                    child: FloatingActionButton(
+                      mini: true,
+                      backgroundColor: Colors.black87,
+                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                      child: const Icon(Icons.menu, color: Colors.orange),
                     ),
                   ),
                 ),
-              );
-            }
-          ),
-
-          // COMMAND UPLINK: An ethereal, localized anomaly permitting access to the main bridge UI.
-          Positioned(
-            top: 40,
-            left: 20,
-            child: Opacity(
-              opacity: 0.5,
-              child: FloatingActionButton(
-                mini: true,
-                backgroundColor: Colors.black87,
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                child: const Icon(Icons.menu, color: Colors.orange),
-              ),
+              ],
             ),
           ),
+
+          // THE AD FRONTIER: Only shows in Portrait if loaded
+          if (isPortrait && _isAdLoaded && _bannerAd != null)
+            SafeArea(
+              top: false,
+              child: SizedBox(
+                width: _bannerAd!.size.width.toDouble(),
+                height: _bannerAd!.size.height.toDouble(),
+                child: AdWidget(ad: _bannerAd!),
+              ),
+            ),
         ],
       ),
     );
