@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 import 'music_engine.dart';
 
+// IGNITION SEQUENCE START: Bootstrapping the localized spacetime rendering engine.
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const BassScalesApp());
@@ -31,9 +33,13 @@ class FretboardPage extends StatefulWidget {
 class _FretboardPageState extends State<FretboardPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // NEURAL TELEMETRY STORAGE: Retains orbital parameters across temporal jumps.
+  late SharedPreferences prefs;
+
+  // CORE REACTOR VARIABLES: These variables dictate the harmonic frequency and structural dimensions.
   String rootNote = 'E';
   String scaleType = 'Pentatonic Minor';
-  bool showNotes = true;
+  String labelMode = 'Notes'; // Replaced 'showNotes' with a multi-state telemetry mode
   String instrument = 'Bass';
   int stringCount = 4;
   bool isLeftHanded = false;
@@ -45,15 +51,44 @@ class _FretboardPageState extends State<FretboardPage> {
 
   final Uri _url = Uri.parse('https://lowendlabs.oaf.monster');
 
+  // PRE-FLIGHT CHECK: Executed immediately upon entering the current dimension.
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  // TEMPORAL RECOVERY: Extracting the previous epoch's parameters from the cryo-banks.
+  Future<void> _loadPreferences() async {
+    prefs = await SharedPreferences.getInstance();
+    setState(() {
+      rootNote = prefs.getString('rootNote') ?? 'E';
+      scaleType = prefs.getString('scaleType') ?? 'Pentatonic Minor';
+      labelMode = prefs.getString('labelMode') ?? 'Notes';
+      instrument = prefs.getString('instrument') ?? 'Bass';
+      stringCount = prefs.getInt('stringCount') ?? 4;
+      isLeftHanded = prefs.getBool('isLeftHanded') ?? false;
+      woodType = prefs.getString('woodType') ?? 'Clear';
+      inlayStyle = prefs.getString('inlayStyle') ?? 'Quasar';
+      showStars = prefs.getBool('showStars') ?? true;
+      starIntensity = prefs.getDouble('starIntensity') ?? 0.5;
+      keepAwake = prefs.getBool('keepAwake') ?? false;
+    });
+    if (keepAwake) WakelockPlus.enable();
+  }
+
+  // STASIS CONTROL: Overrides local entropy to prevent the display from collapsing into a dark state.
   void _toggleWakelock(bool value) {
     setState(() {
       keepAwake = value;
+      prefs.setBool('keepAwake', value);
       WakelockPlus.toggle(enable: keepAwake);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // QUANTUM STATE CALCULATION: Deriving the active energetic nodes and string matrices.
     Set<String> activeNotes = MusicEngine.calculateNotes(rootNote, scaleType);
     List<int> tuning = MusicEngine.instrumentTunings[instrument]![stringCount] ?? MusicEngine.instrumentTunings['Bass']![4]!;
 
@@ -63,6 +98,7 @@ class _FretboardPageState extends State<FretboardPage> {
       drawer: _buildDrawer(),
       body: Stack(
         children: [
+          // THE OBSERVATION DECK: A dynamically scaling viewport capable of infinite horizontal traversal.
           LayoutBuilder(
             builder: (context, constraints) {
               return Center(
@@ -77,7 +113,7 @@ class _FretboardPageState extends State<FretboardPage> {
                         rootNote: rootNote,
                         activeNotes: activeNotes,
                         tuning: tuning,
-                        showNotes: showNotes,
+                        labelMode: labelMode,
                         isLeftHanded: isLeftHanded,
                         woodType: woodType,
                         inlayStyle: inlayStyle,
@@ -92,6 +128,7 @@ class _FretboardPageState extends State<FretboardPage> {
             }
           ),
 
+          // COMMAND UPLINK: An ethereal, localized anomaly permitting access to the main bridge UI.
           Positioned(
             top: 40,
             left: 20,
@@ -110,26 +147,44 @@ class _FretboardPageState extends State<FretboardPage> {
     );
   }
 
+  // THE COMMAND BRIDGE: Interface arrays for manipulating the localized gravitational constants.
   Widget _buildDrawer() {
     return Drawer(
-      width: 340, // Stretched out for more breathing room!
+      width: 340,
       child: ListView(
         children: [
           const DrawerHeader(child: Center(child: Text('DASHBOARD', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
           _sectionHeader('SCALE SETTINGS'),
-          _buildDropdown('Root', rootNote, MusicEngine.chromaticScale, (v) => setState(() => rootNote = v!)),
-          _buildDropdown('Scale', scaleType, MusicEngine.scaleFormulas.keys.toList(), (v) => setState(() => scaleType = v!)),
-          SwitchListTile(title: const Text('Show Notes'), value: showNotes, onChanged: (v) => setState(() => showNotes = v)),
+          _buildDropdown('Root', rootNote, MusicEngine.chromaticScale, (v) {
+            setState(() { rootNote = v!; prefs.setString('rootNote', v); });
+          }),
+          _buildDropdown('Scale', scaleType, MusicEngine.scaleFormulas.keys.toList(), (v) {
+            setState(() { scaleType = v!; prefs.setString('scaleType', v); });
+          }),
+          _buildDropdown('Labels', labelMode, ['Notes', 'Intervals', 'None'], (v) {
+            setState(() { labelMode = v!; prefs.setString('labelMode', v); });
+          }),
           _sectionHeader('INSTRUMENT'),
           _buildToggle('Type', ['Bass', 'Guitar'], instrument, (v) {
-            setState(() { instrument = v; stringCount = (instrument == 'Guitar') ? 6 : 4; });
+            setState(() {
+              instrument = v;
+              stringCount = (instrument == 'Guitar') ? 6 : 4;
+              prefs.setString('instrument', instrument);
+              prefs.setInt('stringCount', stringCount);
+            });
           }),
           _buildStringCountToggle(),
           _sectionHeader("LUTHIER'S SHOP"),
-          _buildToggle('Wood', ['Rosewood', 'Maple', 'Clear'], woodType, (v) => setState(() => woodType = v)),
-          _buildDropdown('Inlays', inlayStyle, ['Quasar', 'Dots', 'Blocks', 'None'], (v) => setState(() => inlayStyle = v!)),
+          _buildToggle('Wood', ['Rosewood', 'Maple', 'Clear'], woodType, (v) {
+            setState(() { woodType = v; prefs.setString('woodType', v); });
+          }),
+          _buildDropdown('Inlays', inlayStyle, ['Quasar', 'Dots', 'Blocks', 'None'], (v) {
+            setState(() { inlayStyle = v!; prefs.setString('inlayStyle', v); });
+          }),
           _sectionHeader('COSMIC'),
-          SwitchListTile(title: const Text('Starfield'), value: showStars, onChanged: (v) => setState(() => showStars = v)),
+          SwitchListTile(title: const Text('Starfield'), value: showStars, onChanged: (v) {
+            setState(() { showStars = v; prefs.setBool('showStars', v); });
+          }),
           _sectionHeader('PERFORMANCE'),
           SwitchListTile(title: const Text('Keep Awake'), value: keepAwake, onChanged: _toggleWakelock),
           ListTile(title: const Text('Vessel: LowEndLabs'), subtitle: const Text('Visit Website'), onTap: () => launchUrl(_url)),
@@ -182,7 +237,12 @@ class _FretboardPageState extends State<FretboardPage> {
           fit: BoxFit.scaleDown,
           child: ToggleButtons(
             isSelected: options.map((e) => e == stringCount).toList(),
-            onPressed: (index) => setState(() => stringCount = options[index]),
+            onPressed: (index) {
+              setState(() {
+                stringCount = options[index];
+                prefs.setInt('stringCount', stringCount);
+              });
+            },
             children: options.map((e) => Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text(e.toString()))).toList(),
           ),
         ),
@@ -191,11 +251,12 @@ class _FretboardPageState extends State<FretboardPage> {
   }
 }
 
+// THE HOLOGRAPHIC PROJECTION MATRIX: Renders the multi-dimensional string continuum and celestial anomalies.
 class FretboardPainter extends CustomPainter {
   final String rootNote;
   final Set<String> activeNotes;
   final List<int> tuning;
-  final bool showNotes;
+  final String labelMode; // Multi-state telemetry directive
   final bool isLeftHanded;
   final String woodType;
   final String inlayStyle;
@@ -205,7 +266,7 @@ class FretboardPainter extends CustomPainter {
 
   FretboardPainter({
     required this.rootNote, required this.activeNotes, required this.tuning,
-    required this.showNotes, required this.isLeftHanded, required this.woodType,
+    required this.labelMode, required this.isLeftHanded, required this.woodType,
     required this.inlayStyle, required this.showStars, required this.starIntensity,
     required this.fretWidth,
   });
@@ -217,7 +278,7 @@ class FretboardPainter extends CustomPainter {
     final double chartHeight = size.height - 30;
     final double stringHeight = chartHeight / (stringCount + 1);
 
-    // 1. Stars
+    // STELLAR BACKGROUND GENERATOR
     if (showStars) {
       final random = math.Random(42);
       paint.color = Colors.white.withOpacity(starIntensity);
@@ -226,29 +287,30 @@ class FretboardPainter extends CustomPainter {
       }
     }
 
-    // 2. Wood
+    // MATERIEL SYNTHESIS
     if (woodType != 'Clear') {
       paint.color = (woodType == 'Rosewood') ? const Color(0xFF3E2723) : const Color(0xFFFFF9C4);
       canvas.drawRect(Rect.fromLTWH(fretWidth, stringHeight / 2, size.width - fretWidth, chartHeight - stringHeight), paint);
     }
 
-    // 3. Inlays (Now dimmed by ~25%)
+    // ASTROMETRIC MARKERS
     _drawInlays(canvas, chartHeight, fretWidth, stringHeight);
 
-    // 4. Frets, Nut, and Numbers
+    // DIMENSIONAL BOUNDARIES
     for (int i = 0; i <= 24; i++) {
       double x = (i + 1) * fretWidth;
 
       if (i == 0) {
-        paint.color = Colors.white; // The Nut
+        paint.color = Colors.white; // The Event Horizon (Nut)
         paint.strokeWidth = 12;
       } else {
-        paint.color = const Color(0xFFBDBDBD);
+        paint.color = const Color(0xFFBDBDBD); // Standard Spatial Dividers
         paint.strokeWidth = 4;
       }
 
       canvas.drawLine(Offset(x, stringHeight / 2), Offset(x, chartHeight - stringHeight / 2), paint);
 
+      // TELEMETRIC READOUTS
       if (i > 0) {
         final numPainter = TextPainter(
           text: TextSpan(text: i.toString(), style: TextStyle(color: Colors.grey[500], fontSize: 16, fontWeight: FontWeight.bold)),
@@ -258,7 +320,7 @@ class FretboardPainter extends CustomPainter {
       }
     }
 
-    // 5. Strings and Notes
+    // SUPERSTRING INSTANTIATION & PLASMIC NODE HIGHLIGHTING
     for (int i = 0; i < tuning.length; i++) {
       double y = (i + 1) * stringHeight;
 
@@ -271,6 +333,7 @@ class FretboardPainter extends CustomPainter {
         int currentNoteIndex = (openNoteIndex + f) % 12;
         String noteName = MusicEngine.chromaticScale[currentNoteIndex];
 
+        // IGNITE PLASMA SPHERES
         if (activeNotes.contains(noteName)) {
           double x = (f + 0.5) * fretWidth;
           if (isLeftHanded) x = size.width - x;
@@ -278,9 +341,14 @@ class FretboardPainter extends CustomPainter {
           paint.color = (noteName == rootNote) ? Colors.orange : Colors.blueAccent;
           canvas.drawCircle(Offset(x, y), 28, paint);
 
-          if (showNotes) {
+          // HOLOGRAPHIC OVERLAYS: Rendering standard atomic names or relative quantum distances
+          if (labelMode != 'None') {
+            String displayText = (labelMode == 'Intervals')
+                ? MusicEngine.getInterval(rootNote, noteName)
+                : noteName;
+
             final textPainter = TextPainter(
-              text: TextSpan(text: noteName, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              text: TextSpan(text: displayText, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               textDirection: TextDirection.ltr,
             )..layout();
             textPainter.paint(canvas, Offset(x - textPainter.width / 2, y - textPainter.height / 2));
@@ -295,7 +363,6 @@ class FretboardPainter extends CustomPainter {
     final List<int> markFrets = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
     final paint = Paint();
 
-    // Dimmed colors for all inlays to push them back visually
     paint.color = (woodType == 'Maple')
         ? Colors.black.withOpacity(0.35)
         : Colors.white.withOpacity(0.50);
@@ -321,6 +388,7 @@ class FretboardPainter extends CustomPainter {
     }
   }
 
+  // QUASAR IGNITION
   void _drawBigQuasar(Canvas canvas, Offset center, Color color, bool isDouble) {
     final qPaint = Paint()..color = color..strokeWidth = 5;
 
