@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'music_engine.dart'; // <--- Connects to the new file
+import 'dart:math' as math; // Needed for the starfield
+import 'music_engine.dart';
 
 void main() {
   runApp(const BassScalesApp());
@@ -16,14 +17,14 @@ class BassScalesApp extends StatelessWidget {
       theme: ThemeData(
         brightness: Brightness.dark,
         primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: const Color(0xFF121212),
+        scaffoldBackgroundColor: const Color(0xFF0A0A0E), // Slightly deeper space black
         switchTheme: SwitchThemeData(
-          thumbColor: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.selected)) return Colors.deepPurple;
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return Colors.deepPurple;
             return Colors.grey;
           }),
-          trackColor: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.selected)) return Colors.deepPurple.shade200;
+          trackColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return Colors.deepPurple.shade200;
             return Colors.grey.shade800;
           }),
         ),
@@ -43,7 +44,6 @@ class FretboardPage extends StatefulWidget {
 class _FretboardPageState extends State<FretboardPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // STATE VARIABLES (Data now lives in MusicEngine)
   String selectedRoot = 'C';
   String selectedScale = 'Major';
   int stringCount = 4;
@@ -51,9 +51,8 @@ class _FretboardPageState extends State<FretboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    // ASK THE ENGINE FOR DATA
     Set<String> activeNotes = MusicEngine.calculateNotes(selectedRoot, selectedScale);
-    List<int> currentTuning = MusicEngine.tunings[stringCount]!;
+    List<int> currentTuning = MusicEngine.instrumentTunings['Bass']![stringCount]!;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -68,7 +67,6 @@ class _FretboardPageState extends State<FretboardPage> {
               children: [
                 const Text("Settings", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 30),
-
                 const Text("ROOT NOTE", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
                 DropdownButton<String>(
                   isExpanded: true,
@@ -79,9 +77,7 @@ class _FretboardPageState extends State<FretboardPage> {
                   items: MusicEngine.chromaticScale.map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
                   onChanged: (v) => setState(() => selectedRoot = v!),
                 ),
-
                 const SizedBox(height: 30),
-
                 const Text("SCALE TYPE", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
                 DropdownButton<String>(
                   isExpanded: true,
@@ -92,9 +88,7 @@ class _FretboardPageState extends State<FretboardPage> {
                   items: MusicEngine.scaleFormulas.keys.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                   onChanged: (v) => setState(() => selectedScale = v!),
                 ),
-
                 const SizedBox(height: 30),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -105,9 +99,7 @@ class _FretboardPageState extends State<FretboardPage> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 30),
-
                 const Text("STRINGS", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 Row(
@@ -124,29 +116,27 @@ class _FretboardPageState extends State<FretboardPage> {
                           border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
                         ),
                         child: Text(
-                          "$count",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? Colors.white : Colors.grey[400]
-                          )
+                            "$count",
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? Colors.white : Colors.grey[400]
+                            )
                         ),
                       ),
                     );
                   }).toList(),
                 ),
-
                 const SizedBox(height: 40),
-
                 Center(
                   child: ElevatedButton.icon(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.check),
                     label: const Text("Done"),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                      backgroundColor: Colors.deepPurple,
-                      foregroundColor: Colors.white
+                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white
                     ),
                   ),
                 )
@@ -161,9 +151,8 @@ class _FretboardPageState extends State<FretboardPage> {
         child: const Icon(Icons.tune),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-
       body: Container(
-        color: const Color(0xFF121212),
+        color: const Color(0xFF0A0A0E),
         alignment: Alignment.centerLeft,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -204,14 +193,25 @@ class FretboardPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final random = math.Random(42); // Consistent star placement
+    final starPaint = Paint()..color = Colors.white.withOpacity(0.12);
+
+    // Draw Spacey Background Stars
+    for (int i = 0; i < 200; i++) {
+      double starX = random.nextDouble() * size.width;
+      double starY = random.nextDouble() * size.height;
+      double starSize = random.nextDouble() * 1.8;
+      canvas.drawCircle(Offset(starX, starY), starSize, starPaint);
+    }
+
     int stringCount = stringOpenNotes.length;
     double dotRadius = stringCount == 4 ? 24.0 : (stringCount == 5 ? 21.0 : 18.0);
     double fontSize = stringCount == 4 ? 20.0 : 16.0;
 
-    final paintLine = Paint()..color = Colors.grey..strokeWidth = 3;
-    final paintString = Paint()..color = Colors.white..strokeWidth = stringCount > 5 ? 3 : 4;
+    final paintLine = Paint()..color = Colors.grey.withOpacity(0.5)..strokeWidth = 3;
+    final paintString = Paint()..color = Colors.white70..strokeWidth = stringCount > 5 ? 3 : 4;
     final paintFret = Paint()..color = Colors.grey[400]!..strokeWidth = 5;
-    final paintNut = Paint()..color = Colors.white..strokeWidth = 10;
+    final paintNut = Paint()..color = Colors.white..strokeWidth = 12;
     final paintInlay = Paint()..color = Colors.white.withOpacity(0.18)..style = PaintingStyle.fill;
 
     double topPadding = 35.0;
@@ -222,20 +222,22 @@ class FretboardPainter extends CustomPainter {
 
     List<int> singleDots = [3, 5, 7, 9, 15, 17, 19, 21];
     List<int> doubleDots = [12, 24];
-
     double midY = topPadding + (boardHeight / 2);
 
+    // Drawing Inlays
     for (int fret in singleDots) {
       double x = (fret * fretWidth) - (fretWidth / 2);
       canvas.drawCircle(Offset(x, midY), 18, paintInlay);
     }
     for (int fret in doubleDots) {
       double x = (fret * fretWidth) - (fretWidth / 2);
-      double offset = stringCount == 4 ? 60 : 45;
+      // WIDENED OFFSET: Pushes the 12th fret dots further apart
+      double offset = stringCount <= 4 ? 85 : 65;
       canvas.drawCircle(Offset(x, midY - offset), 18, paintInlay);
       canvas.drawCircle(Offset(x, midY + offset), 18, paintInlay);
     }
 
+    // Drawing Frets
     for (int i = 0; i <= 24; i++) {
       double x = i * fretWidth;
       double lineBottom = topPadding + boardHeight;
@@ -252,6 +254,7 @@ class FretboardPainter extends CustomPainter {
       }
     }
 
+    // Drawing Strings
     for (int i = 0; i < stringCount; i++) {
       double y = topPadding + (i * stringSpacing);
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paintString);
@@ -259,6 +262,7 @@ class FretboardPainter extends CustomPainter {
 
     int rootIndex = chromaticScale.indexOf(rootNote);
 
+    // Drawing Notes
     for (int stringIdx = 0; stringIdx < stringCount; stringIdx++) {
       int openNoteIndex = stringOpenNotes[stringIdx];
       for (int fret = 0; fret <= 24; fret++) {
@@ -290,6 +294,7 @@ class FretboardPainter extends CustomPainter {
       }
     }
   }
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
