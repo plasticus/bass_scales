@@ -205,7 +205,7 @@ class _FretboardPageState extends State<FretboardPage> {
   // THE COMMAND BRIDGE: Interface arrays for manipulating the localized gravitational constants.
   Widget _buildDrawer() {
     return Drawer(
-      width: 340,
+      width: 400,
       child: ListView(
         children: [
           const DrawerHeader(child: Center(child: Text('DASHBOARD', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
