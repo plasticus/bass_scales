@@ -5,16 +5,26 @@ allprojects {
     }
 }
 
-val newBuildDir: Directory =
-    rootProject.layout.buildDirectory
-        .dir("../../build")
-        .get()
-rootProject.layout.buildDirectory.value(newBuildDir)
+// Force the build directory to the project root so Flutter can find the APK
+rootProject.layout.buildDirectory.set(layout.projectDirectory.dir("../build"))
 
 subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
+    afterEvaluate {
+        if (project.extensions.findByName("android") != null) {
+            configure<com.android.build.gradle.BaseExtension> {
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+            }
+        }
+    }
 }
+
+subprojects {
+    project.layout.buildDirectory.value(rootProject.layout.buildDirectory.map { it.dir(project.name) })
+}
+
 subprojects {
     project.evaluationDependsOn(":app")
 }

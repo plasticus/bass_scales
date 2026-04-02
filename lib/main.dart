@@ -18,7 +18,7 @@ class BassScalesApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'LowEndLabs Scale Visualizer',
+      title: 'Bass Scale Visualizer',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(brightness: Brightness.dark, useMaterial3: true),
       home: const FretboardPage(),
@@ -39,6 +39,7 @@ class _FretboardPageState extends State<FretboardPage> {
   late SharedPreferences prefs;
 
   // CORE REACTOR VARIABLES: These variables dictate the harmonic frequency and structural dimensions.
+  String languageCode = 'en';
   String rootNote = 'E';
   String scaleType = 'Pentatonic Minor';
   String labelMode = 'Notes'; // Replaced 'showNotes' with a multi-state telemetry mode
@@ -50,6 +51,7 @@ class _FretboardPageState extends State<FretboardPage> {
   bool showStars = true;
   double starIntensity = 0.5;
   bool keepAwake = false;
+  String t(String key) => MusicEngine.translations[languageCode]?[key] ?? key;
 
   final Uri _url = Uri.parse('https://lowendlabs.oaf.monster');
 
@@ -108,6 +110,7 @@ class _FretboardPageState extends State<FretboardPage> {
       showStars = prefs.getBool('showStars') ?? true;
       starIntensity = prefs.getDouble('starIntensity') ?? 0.5;
       keepAwake = prefs.getBool('keepAwake') ?? false;
+      languageCode = prefs.getString('languageCode') ?? 'en';
     });
     if (keepAwake) WakelockPlus.enable();
   }
@@ -208,41 +211,77 @@ class _FretboardPageState extends State<FretboardPage> {
       width: 400,
       child: ListView(
         children: [
-          const DrawerHeader(child: Center(child: Text('DASHBOARD', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
-          _sectionHeader('SCALE SETTINGS'),
-          _buildDropdown('Root', rootNote, MusicEngine.chromaticScale, (v) {
+          DrawerHeader(
+            child: Center(
+              child: Text(
+                t('dashboard'),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
+              )
+            )
+          ),
+
+          _sectionHeader(t('scale_settings')),
+          _buildDropdown(t('root'), rootNote, MusicEngine.chromaticScale, (v) {
             setState(() { rootNote = v!; prefs.setString('rootNote', v); });
           }),
-          _buildDropdown('Scale', scaleType, MusicEngine.scaleFormulas.keys.toList(), (v) {
+          _buildDropdown(t('scale'), scaleType, MusicEngine.scaleFormulas.keys.toList(), (v) {
             setState(() { scaleType = v!; prefs.setString('scaleType', v); });
           }),
-          _buildDropdown('Labels', labelMode, ['Notes', 'Intervals', 'None'], (v) {
+          _buildDropdown(t('labels'), labelMode, ['Notes', 'Intervals', 'None'], (v) {
             setState(() { labelMode = v!; prefs.setString('labelMode', v); });
           }),
-          _sectionHeader('INSTRUMENT'),
-          _buildToggle('Type', ['Bass', 'Guitar'], instrument, (v) {
+
+          _sectionHeader(t('instrument')),
+          _buildToggle(t('type'), ['Bass', 'Guitar'], instrument, (v) {
             setState(() {
               instrument = v;
               stringCount = (instrument == 'Guitar') ? 6 : 4;
               prefs.setString('instrument', instrument);
               prefs.setInt('stringCount', stringCount);
             });
-          }),
+          },
+          formatLabel: (label) => t(label)), // Removed the extra }), here
           _buildStringCountToggle(),
-          _sectionHeader("LUTHIER'S SHOP"),
-          _buildToggle('Wood', ['Rosewood', 'Maple', 'Clear'], woodType, (v) {
+
+          _sectionHeader(t('luthier_shop')),
+          _buildToggle(t('wood'), ['Rosewood', 'Maple', 'Clear'], woodType, (v) {
             setState(() { woodType = v; prefs.setString('woodType', v); });
-          }),
-          _buildDropdown('Inlays', inlayStyle, ['Quasar', 'Dots', 'Blocks', 'None'], (v) {
+          },
+          formatLabel: (label) => t(label)),
+          _buildDropdown(t('inlays'), inlayStyle, ['Quasar', 'Dots', 'Blocks', 'None'], (v) {
             setState(() { inlayStyle = v!; prefs.setString('inlayStyle', v); });
           }),
-          _sectionHeader('COSMIC'),
-          SwitchListTile(title: const Text('Starfield'), value: showStars, onChanged: (v) {
-            setState(() { showStars = v; prefs.setBool('showStars', v); });
+
+          _sectionHeader(t('cosmic')),
+          SwitchListTile(
+            title: Text(t('starfield')),
+            value: showStars,
+            onChanged: (v) {
+              setState(() { showStars = v; prefs.setBool('showStars', v); });
+            }
+          ),
+
+          _sectionHeader(t('performance')),
+          SwitchListTile(
+            title: Text(t('keep_awake')),
+            value: keepAwake,
+            onChanged: _toggleWakelock
+          ),
+
+          // --- LANGUAGE TOGGLE ---
+          _sectionHeader('LANGUAGE / IDIOMA'),
+          _buildToggle('Lang', ['en', 'es'], languageCode, (v) {
+            setState(() {
+              languageCode = v;
+              prefs.setString('languageCode', v);
+            });
           }),
-          _sectionHeader('PERFORMANCE'),
-          SwitchListTile(title: const Text('Keep Awake'), value: keepAwake, onChanged: _toggleWakelock),
-          ListTile(title: const Text('Vessel: LowEndLabs'), subtitle: const Text('Visit Website'), onTap: () => launchUrl(_url)),
+
+          ListTile(
+            title: Text("${t('by_author')} LowEndLabs"),
+            subtitle: Text(t('visit_website')),
+            onTap: () => launchUrl(_url)
+          ),
         ],
       ),
     );
@@ -259,23 +298,31 @@ class _FretboardPageState extends State<FretboardPage> {
       trailing: DropdownButton<String>(
         value: value,
         underline: Container(),
-        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        // We wrap the display text in t() so it shows the translated version!
+        items: items.map((e) => DropdownMenuItem(
+          value: e,
+          child: Text(t(e))
+        )).toList(),
         onChanged: onChanged
       ),
     );
   }
 
-  Widget _buildToggle(String label, List<String> options, String current, ValueChanged<String> onChanged) {
+  Widget _buildToggle(String label, List<String> options, String current, ValueChanged<String> onChanged, {String Function(String)? formatLabel}) {
     return ListTile(
       title: Text(label),
       trailing: Container(
-        constraints: const BoxConstraints(maxWidth: 140),
+        constraints: const BoxConstraints(maxWidth: 160), // Widened a hair for Spanish words
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: ToggleButtons(
             isSelected: options.map((e) => e == current).toList(),
             onPressed: (index) => onChanged(options[index]),
-            children: options.map((e) => Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text(e))).toList(),
+            // This line now uses the translator if we provided one!
+            children: options.map((e) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(formatLabel != null ? formatLabel(e) : e)
+            )).toList(),
           ),
         ),
       ),
@@ -285,7 +332,7 @@ class _FretboardPageState extends State<FretboardPage> {
   Widget _buildStringCountToggle() {
     List<int> options = (instrument == 'Guitar') ? [6, 7] : [4, 5, 6];
     return ListTile(
-      title: const Text('Strings'),
+      title: Text(t('strings')),
       trailing: Container(
         constraints: const BoxConstraints(maxWidth: 140),
         child: FittedBox(
