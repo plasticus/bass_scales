@@ -13,12 +13,13 @@ class MusicEngine {
   static const Map<String, List<int>> scaleFormulas = {
     'Major': [0, 2, 4, 5, 7, 9, 11],
     'Natural Minor': [0, 2, 3, 5, 7, 8, 10],
-    'Pentatonic Minor': [0, 3, 5, 7, 10],
     'Pentatonic Major': [0, 2, 4, 7, 9],
+    'Pentatonic Minor': [0, 3, 5, 7, 10],
     'Blues': [0, 3, 5, 6, 7, 10],
     'Dorian': [0, 2, 3, 5, 7, 9, 10],
     'Mixolydian': [0, 2, 4, 5, 7, 9, 10],
     'Phrygian Dominant': [0, 1, 4, 5, 7, 8, 10],
+    'Harmonic Major': [0, 2, 4, 5, 7, 8, 11],
     'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11],
     'Melodic Minor': [0, 2, 3, 5, 7, 9, 11],
     'Prometheus': [0, 2, 4, 6, 9, 10],
@@ -85,6 +86,7 @@ class MusicEngine {
       'Intervals': 'Intervals',
       'Bass': 'Bass',
       'Guitar': 'Guitar',
+      'Harmonic Major': 'Harmonic Major',
     },
     'es': {
       'dashboard': 'TABLERO',
@@ -115,6 +117,7 @@ class MusicEngine {
       'Intervals': 'Intervalos',
       'Bass': 'Bajo',
       'Guitar': 'Guitarra',
+      'Harmonic Major': 'Mayor Armónica',
     }
   };
 }

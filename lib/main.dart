@@ -38,11 +38,11 @@ class _FretboardPageState extends State<FretboardPage> {
   // NEURAL TELEMETRY STORAGE: Retains orbital parameters across temporal jumps.
   late SharedPreferences prefs;
 
-  // CORE REACTOR VARIABLES: These variables dictate the harmonic frequency and structural dimensions.
+  // CORE REACTOR VARIABLES
   String languageCode = 'en';
   String rootNote = 'E';
   String scaleType = 'Pentatonic Minor';
-  String labelMode = 'Notes'; // Replaced 'showNotes' with a multi-state telemetry mode
+  String labelMode = 'Notes';
   String instrument = 'Bass';
   int stringCount = 4;
   bool isLeftHanded = false;
@@ -51,6 +51,7 @@ class _FretboardPageState extends State<FretboardPage> {
   bool showStars = true;
   double starIntensity = 0.5;
   bool keepAwake = false;
+
   String t(String key) => MusicEngine.translations[languageCode]?[key] ?? key;
 
   final Uri _url = Uri.parse('https://lowendlabs.oaf.monster');
@@ -58,16 +59,13 @@ class _FretboardPageState extends State<FretboardPage> {
   // --- AD MOBILIZATION UNIT ---
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
-
-  // Google Test ID for Android
   final String _adUnitId = 'ca-app-pub-3940256099942544/6300978111';
 
-  // PRE-FLIGHT CHECK: Executed immediately upon entering the current dimension.
   @override
   void initState() {
     super.initState();
     _loadPreferences();
-    _initBannerAd(); // Fire up the engines!
+    _initBannerAd();
   }
 
   void _initBannerAd() {
@@ -90,12 +88,10 @@ class _FretboardPageState extends State<FretboardPage> {
 
   @override
   void dispose() {
-    // CLEANUP CREW: Don't leave the lights on when you leave the house!
     _bannerAd?.dispose();
     super.dispose();
   }
 
-  // TEMPORAL RECOVERY: Extracting the previous epoch's parameters from the cryo-banks.
   Future<void> _loadPreferences() async {
     prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -115,7 +111,6 @@ class _FretboardPageState extends State<FretboardPage> {
     if (keepAwake) WakelockPlus.enable();
   }
 
-  // STASIS CONTROL: Overrides local entropy to prevent the display from collapsing into a dark state.
   void _toggleWakelock(bool value) {
     setState(() {
       keepAwake = value;
@@ -126,11 +121,8 @@ class _FretboardPageState extends State<FretboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    // QUANTUM STATE CALCULATION: Deriving the active energetic nodes and string matrices.
     Set<String> activeNotes = MusicEngine.calculateNotes(rootNote, scaleType);
     List<int> tuning = MusicEngine.instrumentTunings[instrument]![stringCount] ?? MusicEngine.instrumentTunings['Bass']![4]!;
-
-    // Check if we are in Portrait mode
     bool isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
 
     return Scaffold(
@@ -142,7 +134,6 @@ class _FretboardPageState extends State<FretboardPage> {
           Expanded(
             child: Stack(
               children: [
-                // THE OBSERVATION DECK: A dynamically scaling viewport capable of infinite horizontal traversal.
                 LayoutBuilder(
                   builder: (context, constraints) {
                     return Center(
@@ -171,8 +162,6 @@ class _FretboardPageState extends State<FretboardPage> {
                     );
                   }
                 ),
-
-                // COMMAND UPLINK: An ethereal, localized anomaly permitting access to the main bridge UI.
                 Positioned(
                   top: 40,
                   left: 20,
@@ -189,8 +178,6 @@ class _FretboardPageState extends State<FretboardPage> {
               ],
             ),
           ),
-
-          // THE AD FRONTIER: Only shows in Portrait if loaded
           if (isPortrait && _isAdLoaded && _bannerAd != null)
             SafeArea(
               top: false,
@@ -205,20 +192,12 @@ class _FretboardPageState extends State<FretboardPage> {
     );
   }
 
-  // THE COMMAND BRIDGE: Interface arrays for manipulating the localized gravitational constants.
   Widget _buildDrawer() {
     return Drawer(
       width: 400,
       child: ListView(
         children: [
-          DrawerHeader(
-            child: Center(
-              child: Text(
-                t('dashboard'),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
-              )
-            )
-          ),
+          DrawerHeader(child: Center(child: Text(t('dashboard'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
 
           _sectionHeader(t('scale_settings')),
           _buildDropdown(t('root'), rootNote, MusicEngine.chromaticScale, (v) {
@@ -239,15 +218,26 @@ class _FretboardPageState extends State<FretboardPage> {
               prefs.setString('instrument', instrument);
               prefs.setInt('stringCount', stringCount);
             });
-          },
-          formatLabel: (label) => t(label)), // Removed the extra }), here
+          }, formatLabel: (label) => t(label)),
           _buildStringCountToggle(),
+
+          // --- THE SOUTHPAW SWITCH ---
+          SwitchListTile(
+            title: const Text('Left-Handed Mode'),
+            secondary: const Icon(Icons.swap_horiz, color: Colors.orange),
+            value: isLeftHanded,
+            onChanged: (v) {
+              setState(() {
+                isLeftHanded = v;
+                prefs.setBool('isLeftHanded', v);
+              });
+            },
+          ),
 
           _sectionHeader(t('luthier_shop')),
           _buildToggle(t('wood'), ['Rosewood', 'Maple', 'Clear'], woodType, (v) {
             setState(() { woodType = v; prefs.setString('woodType', v); });
-          },
-          formatLabel: (label) => t(label)),
+          }, formatLabel: (label) => t(label)),
           _buildDropdown(t('inlays'), inlayStyle, ['Quasar', 'Dots', 'Blocks', 'None'], (v) {
             setState(() { inlayStyle = v!; prefs.setString('inlayStyle', v); });
           }),
@@ -268,13 +258,9 @@ class _FretboardPageState extends State<FretboardPage> {
             onChanged: _toggleWakelock
           ),
 
-          // --- LANGUAGE TOGGLE ---
           _sectionHeader('LANGUAGE / IDIOMA'),
           _buildToggle('Lang', ['en', 'es'], languageCode, (v) {
-            setState(() {
-              languageCode = v;
-              prefs.setString('languageCode', v);
-            });
+            setState(() { languageCode = v; prefs.setString('languageCode', v); });
           }),
 
           ListTile(
@@ -298,11 +284,7 @@ class _FretboardPageState extends State<FretboardPage> {
       trailing: DropdownButton<String>(
         value: value,
         underline: Container(),
-        // We wrap the display text in t() so it shows the translated version!
-        items: items.map((e) => DropdownMenuItem(
-          value: e,
-          child: Text(t(e))
-        )).toList(),
+        items: items.map((e) => DropdownMenuItem(value: e, child: Text(t(e)))).toList(),
         onChanged: onChanged
       ),
     );
@@ -312,13 +294,12 @@ class _FretboardPageState extends State<FretboardPage> {
     return ListTile(
       title: Text(label),
       trailing: Container(
-        constraints: const BoxConstraints(maxWidth: 160), // Widened a hair for Spanish words
+        constraints: const BoxConstraints(maxWidth: 160),
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: ToggleButtons(
             isSelected: options.map((e) => e == current).toList(),
             onPressed: (index) => onChanged(options[index]),
-            // This line now uses the translator if we provided one!
             children: options.map((e) => Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(formatLabel != null ? formatLabel(e) : e)
@@ -353,12 +334,11 @@ class _FretboardPageState extends State<FretboardPage> {
   }
 }
 
-// THE HOLOGRAPHIC PROJECTION MATRIX: Renders the multi-dimensional string continuum and celestial anomalies.
 class FretboardPainter extends CustomPainter {
   final String rootNote;
   final Set<String> activeNotes;
   final List<int> tuning;
-  final String labelMode; // Multi-state telemetry directive
+  final String labelMode;
   final bool isLeftHanded;
   final String woodType;
   final String inlayStyle;
@@ -375,12 +355,18 @@ class FretboardPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // MIRROR WORLD ACTIVATION
+    if (isLeftHanded) {
+      canvas.save();
+      canvas.translate(size.width, 0);
+      canvas.scale(-1, 1);
+    }
+
     final paint = Paint();
     final double stringCount = tuning.length.toDouble();
     final double chartHeight = size.height - 30;
     final double stringHeight = chartHeight / (stringCount + 1);
 
-    // STELLAR BACKGROUND GENERATOR
     if (showStars) {
       final random = math.Random(42);
       paint.color = Colors.white.withOpacity(starIntensity);
@@ -389,43 +375,45 @@ class FretboardPainter extends CustomPainter {
       }
     }
 
-    // MATERIEL SYNTHESIS
     if (woodType != 'Clear') {
       paint.color = (woodType == 'Rosewood') ? const Color(0xFF3E2723) : const Color(0xFFFFF9C4);
       canvas.drawRect(Rect.fromLTWH(fretWidth, stringHeight / 2, size.width - fretWidth, chartHeight - stringHeight), paint);
     }
 
-    // ASTROMETRIC MARKERS
     _drawInlays(canvas, chartHeight, fretWidth, stringHeight);
 
-    // DIMENSIONAL BOUNDARIES
     for (int i = 0; i <= 24; i++) {
       double x = (i + 1) * fretWidth;
-
       if (i == 0) {
-        paint.color = Colors.white; // The Event Horizon (Nut)
+        paint.color = Colors.white;
         paint.strokeWidth = 12;
       } else {
-        paint.color = const Color(0xFFBDBDBD); // Standard Spatial Dividers
+        paint.color = const Color(0xFFBDBDBD);
         paint.strokeWidth = 4;
       }
-
       canvas.drawLine(Offset(x, stringHeight / 2), Offset(x, chartHeight - stringHeight / 2), paint);
 
-      // TELEMETRIC READOUTS
       if (i > 0) {
         final numPainter = TextPainter(
           text: TextSpan(text: i.toString(), style: TextStyle(color: Colors.grey[500], fontSize: 16, fontWeight: FontWeight.bold)),
           textDirection: TextDirection.ltr,
         )..layout();
-        numPainter.paint(canvas, Offset(x - numPainter.width / 2, chartHeight + 4));
+
+        // If left-handed, we must counter-rotate or flip text back so it's readable
+        if (isLeftHanded) {
+           canvas.save();
+           canvas.translate(x, chartHeight + 4);
+           canvas.scale(-1, 1);
+           numPainter.paint(canvas, Offset(-numPainter.width / 2, 0));
+           canvas.restore();
+        } else {
+           numPainter.paint(canvas, Offset(x - numPainter.width / 2, chartHeight + 4));
+        }
       }
     }
 
-    // SUPERSTRING INSTANTIATION & PLASMIC NODE HIGHLIGHTING
     for (int i = 0; i < tuning.length; i++) {
       double y = (i + 1) * stringHeight;
-
       paint.color = Colors.grey[400]!;
       paint.strokeWidth = 3 + (i * 1.2);
       canvas.drawLine(Offset(fretWidth, y), Offset(size.width, y), paint);
@@ -435,44 +423,44 @@ class FretboardPainter extends CustomPainter {
         int currentNoteIndex = (openNoteIndex + f) % 12;
         String noteName = MusicEngine.chromaticScale[currentNoteIndex];
 
-        // IGNITE PLASMA SPHERES
         if (activeNotes.contains(noteName)) {
           double x = (f + 0.5) * fretWidth;
-          if (isLeftHanded) x = size.width - x;
-
           paint.color = (noteName == rootNote) ? Colors.orange : Colors.blueAccent;
           canvas.drawCircle(Offset(x, y), 28, paint);
 
-          // HOLOGRAPHIC OVERLAYS: Rendering standard atomic names or relative quantum distances
           if (labelMode != 'None') {
-            String displayText = (labelMode == 'Intervals')
-                ? MusicEngine.getInterval(rootNote, noteName)
-                : noteName;
-
+            String displayText = (labelMode == 'Intervals') ? MusicEngine.getInterval(rootNote, noteName) : noteName;
             final textPainter = TextPainter(
               text: TextSpan(text: displayText, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               textDirection: TextDirection.ltr,
             )..layout();
-            textPainter.paint(canvas, Offset(x - textPainter.width / 2, y - textPainter.height / 2));
+
+            if (isLeftHanded) {
+              canvas.save();
+              canvas.translate(x, y);
+              canvas.scale(-1, 1);
+              textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
+              canvas.restore();
+            } else {
+              textPainter.paint(canvas, Offset(x - textPainter.width / 2, y - textPainter.height / 2));
+            }
           }
         }
       }
     }
+
+    if (isLeftHanded) canvas.restore();
   }
 
   void _drawInlays(Canvas canvas, double chartHeight, double fretWidth, double stringHeight) {
     if (inlayStyle == 'None') return;
     final List<int> markFrets = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
     final paint = Paint();
-
-    paint.color = (woodType == 'Maple')
-        ? Colors.black.withOpacity(0.35)
-        : Colors.white.withOpacity(0.50);
+    paint.color = (woodType == 'Maple') ? Colors.black.withOpacity(0.35) : Colors.white.withOpacity(0.50);
 
     for (int f in markFrets) {
       double x = (f + 0.5) * fretWidth;
       double y = chartHeight / 2;
-
       bool isDouble = (f == 12 || f == 24);
 
       if (inlayStyle == 'Quasar') {
@@ -490,16 +478,13 @@ class FretboardPainter extends CustomPainter {
     }
   }
 
-  // QUASAR IGNITION
   void _drawBigQuasar(Canvas canvas, Offset center, Color color, bool isDouble) {
     final qPaint = Paint()..color = color..strokeWidth = 5;
-
     void drawOne(Offset c) {
       canvas.drawCircle(c, 15, qPaint);
       canvas.drawLine(Offset(c.dx, c.dy - 60), Offset(c.dx, c.dy + 60), qPaint);
       canvas.drawLine(Offset(c.dx - 35, c.dy), Offset(c.dx + 35, c.dy), qPaint);
     }
-
     if (isDouble) {
       drawOne(center.translate(0, -80));
       drawOne(center.translate(0, 80));
