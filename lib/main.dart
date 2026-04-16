@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'dart:math' as math;
 import 'music_engine.dart';
+import 'fretboard_painter.dart';
+import 'settings_drawer.dart';
 
-// IGNITION SEQUENCE START: Bootstrapping the localized spacetime rendering engine.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await MobileAds.instance.initialize();
@@ -34,11 +33,8 @@ class FretboardPage extends StatefulWidget {
 
 class _FretboardPageState extends State<FretboardPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  // NEURAL TELEMETRY STORAGE: Retains orbital parameters across temporal jumps.
   late SharedPreferences prefs;
 
-  // CORE REACTOR VARIABLES
   String languageCode = 'en';
   String rootNote = 'E';
   String scaleType = 'Pentatonic Minor';
@@ -51,12 +47,9 @@ class _FretboardPageState extends State<FretboardPage> {
   bool showStars = true;
   double starIntensity = 0.5;
   bool keepAwake = false;
+  double _fretWidth = 100.0;
+  double _baseFretWidth = 100.0;
 
-  String t(String key) => MusicEngine.translations[languageCode]?[key] ?? key;
-
-  final Uri _url = Uri.parse('https://lowendlabs.oaf.monster');
-
-  // --- AD MOBILIZATION UNIT ---
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
   final String _adUnitId = 'ca-app-pub-3940256099942544/6300978111';
@@ -74,16 +67,10 @@ class _FretboardPageState extends State<FretboardPage> {
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
-        onAdLoaded: (ad) {
-          setState(() => _isAdLoaded = true);
-        },
-        onAdFailedToLoad: (ad, error) {
-          ad.dispose();
-          print('Ad failed to load: $error');
-        },
+        onAdLoaded: (ad) => setState(() => _isAdLoaded = true),
+        onAdFailedToLoad: (ad, error) { ad.dispose(); print('Ad failed to load: $error'); },
       ),
-    );
-    _bannerAd?.load();
+    )..load();
   }
 
   @override
@@ -107,14 +94,35 @@ class _FretboardPageState extends State<FretboardPage> {
       starIntensity = prefs.getDouble('starIntensity') ?? 0.5;
       keepAwake = prefs.getBool('keepAwake') ?? false;
       languageCode = prefs.getString('languageCode') ?? 'en';
+      _fretWidth = prefs.getDouble('fretWidth') ?? 100.0;
     });
     if (keepAwake) WakelockPlus.enable();
   }
 
-  void _toggleWakelock(bool value) {
+  void _updateSetting(String key, dynamic value) {
     setState(() {
-      keepAwake = value;
-      prefs.setBool('keepAwake', value);
+      if (key == 'rootNote') { rootNote = value; prefs.setString(key, value); }
+      if (key == 'scaleType') { scaleType = value; prefs.setString(key, value); }
+      if (key == 'labelMode') { labelMode = value; prefs.setString(key, value); }
+      if (key == 'instrument') {
+        instrument = value;
+        stringCount = (instrument == 'Guitar') ? 6 : 4;
+        prefs.setString(key, value);
+        prefs.setInt('stringCount', stringCount);
+      }
+      if (key == 'stringCount') { stringCount = value; prefs.setInt(key, value); }
+      if (key == 'isLeftHanded') { isLeftHanded = value; prefs.setBool(key, value); }
+      if (key == 'woodType') { woodType = value; prefs.setString(key, value); }
+      if (key == 'inlayStyle') { inlayStyle = value; prefs.setString(key, value); }
+      if (key == 'showStars') { showStars = value; prefs.setBool(key, value); }
+      if (key == 'languageCode') { languageCode = value; prefs.setString(key, value); }
+    });
+  }
+
+  void _toggleWakelock() {
+    setState(() {
+      keepAwake = !keepAwake;
+      prefs.setBool('keepAwake', keepAwake);
       WakelockPlus.toggle(enable: keepAwake);
     });
   }
@@ -128,7 +136,21 @@ class _FretboardPageState extends State<FretboardPage> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.black,
-      drawer: _buildDrawer(),
+      drawer: SettingsDrawer(
+        languageCode: languageCode,
+        rootNote: rootNote,
+        scaleType: scaleType,
+        labelMode: labelMode,
+        instrument: instrument,
+        stringCount: stringCount,
+        isLeftHanded: isLeftHanded,
+        woodType: woodType,
+        inlayStyle: inlayStyle,
+        showStars: showStars,
+        keepAwake: keepAwake,
+        onSettingChanged: _updateSetting,
+        onToggleWakelock: _toggleWakelock,
+      ),
       body: Column(
         children: [
           Expanded(
@@ -136,25 +158,24 @@ class _FretboardPageState extends State<FretboardPage> {
               children: [
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    return Center(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: SizedBox(
-                          height: constraints.maxHeight * 0.98,
-                          width: 26 * 100.0,
-                          child: CustomPaint(
-                            size: Size.infinite,
-                            painter: FretboardPainter(
-                              rootNote: rootNote,
-                              activeNotes: activeNotes,
-                              tuning: tuning,
-                              labelMode: labelMode,
-                              isLeftHanded: isLeftHanded,
-                              woodType: woodType,
-                              inlayStyle: inlayStyle,
-                              showStars: showStars,
-                              starIntensity: starIntensity,
-                              fretWidth: 100.0,
+                    return GestureDetector(
+                      onScaleStart: (d) => _baseFretWidth = _fretWidth,
+                      onScaleUpdate: (d) => setState(() => _fretWidth = (_baseFretWidth * d.horizontalScale).clamp(60.0, 300.0)),
+                      onScaleEnd: (d) => prefs.setDouble('fretWidth', _fretWidth),
+                      child: Center(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            height: constraints.maxHeight * 0.98,
+                            width: 26 * _fretWidth,
+                            child: CustomPaint(
+                              size: Size.infinite,
+                              painter: FretboardPainter(
+                                rootNote: rootNote, activeNotes: activeNotes, tuning: tuning,
+                                labelMode: labelMode, isLeftHanded: isLeftHanded, woodType: woodType,
+                                inlayStyle: inlayStyle, showStars: showStars, starIntensity: starIntensity,
+                                fretWidth: _fretWidth,
+                              ),
                             ),
                           ),
                         ),
@@ -163,13 +184,11 @@ class _FretboardPageState extends State<FretboardPage> {
                   }
                 ),
                 Positioned(
-                  top: 40,
-                  left: 20,
+                  top: 40, left: 20,
                   child: Opacity(
                     opacity: 0.5,
                     child: FloatingActionButton(
-                      mini: true,
-                      backgroundColor: Colors.black87,
+                      mini: true, backgroundColor: Colors.black87,
                       onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                       child: const Icon(Icons.menu, color: Colors.orange),
                     ),
@@ -179,320 +198,9 @@ class _FretboardPageState extends State<FretboardPage> {
             ),
           ),
           if (isPortrait && _isAdLoaded && _bannerAd != null)
-            SafeArea(
-              top: false,
-              child: SizedBox(
-                width: _bannerAd!.size.width.toDouble(),
-                height: _bannerAd!.size.height.toDouble(),
-                child: AdWidget(ad: _bannerAd!),
-              ),
-            ),
+            SafeArea(top: false, child: SizedBox(width: _bannerAd!.size.width.toDouble(), height: _bannerAd!.size.height.toDouble(), child: AdWidget(ad: _bannerAd!))),
         ],
       ),
     );
   }
-
-  Widget _buildDrawer() {
-    return Drawer(
-      width: 400,
-      child: ListView(
-        children: [
-          DrawerHeader(child: Center(child: Text(t('dashboard'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
-
-          _sectionHeader(t('scale_settings')),
-          _buildDropdown(t('root'), rootNote, MusicEngine.chromaticScale, (v) {
-            setState(() { rootNote = v!; prefs.setString('rootNote', v); });
-          }),
-          _buildDropdown(t('scale'), scaleType, MusicEngine.scaleFormulas.keys.toList(), (v) {
-            setState(() { scaleType = v!; prefs.setString('scaleType', v); });
-          }),
-          _buildDropdown(t('labels'), labelMode, ['Notes', 'Intervals', 'None'], (v) {
-            setState(() { labelMode = v!; prefs.setString('labelMode', v); });
-          }),
-
-          _sectionHeader(t('instrument')),
-          _buildToggle(t('type'), ['Bass', 'Guitar'], instrument, (v) {
-            setState(() {
-              instrument = v;
-              stringCount = (instrument == 'Guitar') ? 6 : 4;
-              prefs.setString('instrument', instrument);
-              prefs.setInt('stringCount', stringCount);
-            });
-          }, formatLabel: (label) => t(label)),
-          _buildStringCountToggle(),
-
-          // --- THE SOUTHPAW SWITCH ---
-          SwitchListTile(
-            title: const Text('Left-Handed Mode'),
-            secondary: const Icon(Icons.swap_horiz, color: Colors.orange),
-            value: isLeftHanded,
-            onChanged: (v) {
-              setState(() {
-                isLeftHanded = v;
-                prefs.setBool('isLeftHanded', v);
-              });
-            },
-          ),
-
-          _sectionHeader(t('luthier_shop')),
-          _buildToggle(t('wood'), ['Rosewood', 'Maple', 'Clear'], woodType, (v) {
-            setState(() { woodType = v; prefs.setString('woodType', v); });
-          }, formatLabel: (label) => t(label)),
-          _buildDropdown(t('inlays'), inlayStyle, ['Quasar', 'Dots', 'Blocks', 'None'], (v) {
-            setState(() { inlayStyle = v!; prefs.setString('inlayStyle', v); });
-          }),
-
-          _sectionHeader(t('cosmic')),
-          SwitchListTile(
-            title: Text(t('starfield')),
-            value: showStars,
-            onChanged: (v) {
-              setState(() { showStars = v; prefs.setBool('showStars', v); });
-            }
-          ),
-
-          _sectionHeader(t('performance')),
-          SwitchListTile(
-            title: Text(t('keep_awake')),
-            value: keepAwake,
-            onChanged: _toggleWakelock
-          ),
-
-          _sectionHeader('LANGUAGE / IDIOMA'),
-          _buildToggle('Lang', ['en', 'es'], languageCode, (v) {
-            setState(() { languageCode = v; prefs.setString('languageCode', v); });
-          }),
-
-          ListTile(
-            title: Text("${t('by_author')} LowEndLabs"),
-            subtitle: Text(t('visit_website')),
-            onTap: () => launchUrl(_url)
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionHeader(String title) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-    child: Text(title, style: const TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
-  );
-
-  Widget _buildDropdown(String label, String value, List<String> items, ValueChanged<String?> onChanged) {
-    return ListTile(
-      title: Text(label),
-      trailing: DropdownButton<String>(
-        value: value,
-        underline: Container(),
-        items: items.map((e) => DropdownMenuItem(value: e, child: Text(t(e)))).toList(),
-        onChanged: onChanged
-      ),
-    );
-  }
-
-  Widget _buildToggle(String label, List<String> options, String current, ValueChanged<String> onChanged, {String Function(String)? formatLabel}) {
-    return ListTile(
-      title: Text(label),
-      trailing: Container(
-        constraints: const BoxConstraints(maxWidth: 160),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: ToggleButtons(
-            isSelected: options.map((e) => e == current).toList(),
-            onPressed: (index) => onChanged(options[index]),
-            children: options.map((e) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(formatLabel != null ? formatLabel(e) : e)
-            )).toList(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStringCountToggle() {
-    List<int> options = (instrument == 'Guitar') ? [6, 7] : [4, 5, 6];
-    return ListTile(
-      title: Text(t('strings')),
-      trailing: Container(
-        constraints: const BoxConstraints(maxWidth: 140),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: ToggleButtons(
-            isSelected: options.map((e) => e == stringCount).toList(),
-            onPressed: (index) {
-              setState(() {
-                stringCount = options[index];
-                prefs.setInt('stringCount', stringCount);
-              });
-            },
-            children: options.map((e) => Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text(e.toString()))).toList(),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class FretboardPainter extends CustomPainter {
-  final String rootNote;
-  final Set<String> activeNotes;
-  final List<int> tuning;
-  final String labelMode;
-  final bool isLeftHanded;
-  final String woodType;
-  final String inlayStyle;
-  final bool showStars;
-  final double starIntensity;
-  final double fretWidth;
-
-  FretboardPainter({
-    required this.rootNote, required this.activeNotes, required this.tuning,
-    required this.labelMode, required this.isLeftHanded, required this.woodType,
-    required this.inlayStyle, required this.showStars, required this.starIntensity,
-    required this.fretWidth,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // MIRROR WORLD ACTIVATION
-    if (isLeftHanded) {
-      canvas.save();
-      canvas.translate(size.width, 0);
-      canvas.scale(-1, 1);
-    }
-
-    final paint = Paint();
-    final double stringCount = tuning.length.toDouble();
-    final double chartHeight = size.height - 30;
-    final double stringHeight = chartHeight / (stringCount + 1);
-
-    if (showStars) {
-      final random = math.Random(42);
-      paint.color = Colors.white.withOpacity(starIntensity);
-      for (int i = 0; i < 600; i++) {
-        canvas.drawCircle(Offset(random.nextDouble() * size.width, random.nextDouble() * size.height), random.nextDouble() * 2, paint);
-      }
-    }
-
-    if (woodType != 'Clear') {
-      paint.color = (woodType == 'Rosewood') ? const Color(0xFF3E2723) : const Color(0xFFFFF9C4);
-      canvas.drawRect(Rect.fromLTWH(fretWidth, stringHeight / 2, size.width - fretWidth, chartHeight - stringHeight), paint);
-    }
-
-    _drawInlays(canvas, chartHeight, fretWidth, stringHeight);
-
-    for (int i = 0; i <= 24; i++) {
-      double x = (i + 1) * fretWidth;
-      if (i == 0) {
-        paint.color = Colors.white;
-        paint.strokeWidth = 12;
-      } else {
-        paint.color = const Color(0xFFBDBDBD);
-        paint.strokeWidth = 4;
-      }
-      canvas.drawLine(Offset(x, stringHeight / 2), Offset(x, chartHeight - stringHeight / 2), paint);
-
-      if (i > 0) {
-        final numPainter = TextPainter(
-          text: TextSpan(text: i.toString(), style: TextStyle(color: Colors.grey[500], fontSize: 16, fontWeight: FontWeight.bold)),
-          textDirection: TextDirection.ltr,
-        )..layout();
-
-        // If left-handed, we must counter-rotate or flip text back so it's readable
-        if (isLeftHanded) {
-           canvas.save();
-           canvas.translate(x, chartHeight + 4);
-           canvas.scale(-1, 1);
-           numPainter.paint(canvas, Offset(-numPainter.width / 2, 0));
-           canvas.restore();
-        } else {
-           numPainter.paint(canvas, Offset(x - numPainter.width / 2, chartHeight + 4));
-        }
-      }
-    }
-
-    for (int i = 0; i < tuning.length; i++) {
-      double y = (i + 1) * stringHeight;
-      paint.color = Colors.grey[400]!;
-      paint.strokeWidth = 3 + (i * 1.2);
-      canvas.drawLine(Offset(fretWidth, y), Offset(size.width, y), paint);
-
-      int openNoteIndex = tuning[i];
-      for (int f = 0; f <= 24; f++) {
-        int currentNoteIndex = (openNoteIndex + f) % 12;
-        String noteName = MusicEngine.chromaticScale[currentNoteIndex];
-
-        if (activeNotes.contains(noteName)) {
-          double x = (f + 0.5) * fretWidth;
-          paint.color = (noteName == rootNote) ? Colors.orange : Colors.blueAccent;
-          canvas.drawCircle(Offset(x, y), 28, paint);
-
-          if (labelMode != 'None') {
-            String displayText = (labelMode == 'Intervals') ? MusicEngine.getInterval(rootNote, noteName) : noteName;
-            final textPainter = TextPainter(
-              text: TextSpan(text: displayText, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-              textDirection: TextDirection.ltr,
-            )..layout();
-
-            if (isLeftHanded) {
-              canvas.save();
-              canvas.translate(x, y);
-              canvas.scale(-1, 1);
-              textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
-              canvas.restore();
-            } else {
-              textPainter.paint(canvas, Offset(x - textPainter.width / 2, y - textPainter.height / 2));
-            }
-          }
-        }
-      }
-    }
-
-    if (isLeftHanded) canvas.restore();
-  }
-
-  void _drawInlays(Canvas canvas, double chartHeight, double fretWidth, double stringHeight) {
-    if (inlayStyle == 'None') return;
-    final List<int> markFrets = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
-    final paint = Paint();
-    paint.color = (woodType == 'Maple') ? Colors.black.withOpacity(0.35) : Colors.white.withOpacity(0.50);
-
-    for (int f in markFrets) {
-      double x = (f + 0.5) * fretWidth;
-      double y = chartHeight / 2;
-      bool isDouble = (f == 12 || f == 24);
-
-      if (inlayStyle == 'Quasar') {
-         _drawBigQuasar(canvas, Offset(x, y), paint.color, isDouble);
-      } else if (inlayStyle == 'Dots') {
-         if (isDouble) {
-           canvas.drawCircle(Offset(x, y - stringHeight), 12, paint);
-           canvas.drawCircle(Offset(x, y + stringHeight), 12, paint);
-         } else {
-           canvas.drawCircle(Offset(x, y), 12, paint);
-         }
-      } else if (inlayStyle == 'Blocks') {
-         canvas.drawRect(Rect.fromCenter(center: Offset(x, y), width: fretWidth * 0.5, height: chartHeight * 0.5), paint);
-      }
-    }
-  }
-
-  void _drawBigQuasar(Canvas canvas, Offset center, Color color, bool isDouble) {
-    final qPaint = Paint()..color = color..strokeWidth = 5;
-    void drawOne(Offset c) {
-      canvas.drawCircle(c, 15, qPaint);
-      canvas.drawLine(Offset(c.dx, c.dy - 60), Offset(c.dx, c.dy + 60), qPaint);
-      canvas.drawLine(Offset(c.dx - 35, c.dy), Offset(c.dx + 35, c.dy), qPaint);
-    }
-    if (isDouble) {
-      drawOne(center.translate(0, -80));
-      drawOne(center.translate(0, 80));
-    } else {
-      drawOne(center);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant FretboardPainter oldDelegate) => true;
 }
