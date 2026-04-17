@@ -35,6 +35,7 @@ class _FretboardPageState extends State<FretboardPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late SharedPreferences prefs;
 
+  // NEURAL TELEMETRY STORAGE
   String languageCode = 'en';
   String rootNote = 'E';
   String scaleType = 'Pentatonic Minor';
@@ -47,8 +48,9 @@ class _FretboardPageState extends State<FretboardPage> {
   bool showStars = true;
   double starIntensity = 0.5;
   bool keepAwake = false;
+
+  // ACCORDION ZOOM STATE
   double _fretWidth = 100.0;
-  double _baseFretWidth = 100.0;
 
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
@@ -57,7 +59,8 @@ class _FretboardPageState extends State<FretboardPage> {
   @override
   void initState() {
     super.initState();
-    _loadPreferences();
+    // Calculate 12-fret default on the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPreferences());
     _initBannerAd();
   }
 
@@ -81,6 +84,11 @@ class _FretboardPageState extends State<FretboardPage> {
 
   Future<void> _loadPreferences() async {
     prefs = await SharedPreferences.getInstance();
+
+    // Calculate the "High Noon" 12-fret default for this specific screen
+    double screenWidth = MediaQuery.of(context).size.width;
+    double default12FretWidth = screenWidth / 12.5;
+
     setState(() {
       rootNote = prefs.getString('rootNote') ?? 'E';
       scaleType = prefs.getString('scaleType') ?? 'Pentatonic Minor';
@@ -94,7 +102,9 @@ class _FretboardPageState extends State<FretboardPage> {
       starIntensity = prefs.getDouble('starIntensity') ?? 0.5;
       keepAwake = prefs.getBool('keepAwake') ?? false;
       languageCode = prefs.getString('languageCode') ?? 'en';
-      _fretWidth = prefs.getDouble('fretWidth') ?? 100.0;
+
+      // Load saved width or fall back to the 12-fret default
+      _fretWidth = prefs.getDouble('fretWidth') ?? default12FretWidth;
     });
     if (keepAwake) WakelockPlus.enable();
   }
@@ -151,54 +161,107 @@ class _FretboardPageState extends State<FretboardPage> {
         onSettingChanged: _updateSetting,
         onToggleWakelock: _toggleWakelock,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: Stack(
-              children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    return GestureDetector(
-                      onScaleStart: (d) => _baseFretWidth = _fretWidth,
-                      onScaleUpdate: (d) => setState(() => _fretWidth = (_baseFretWidth * d.horizontalScale).clamp(60.0, 300.0)),
-                      onScaleEnd: (d) => prefs.setDouble('fretWidth', _fretWidth),
-                      child: Center(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: SizedBox(
-                            height: constraints.maxHeight * 0.98,
-                            width: 26 * _fretWidth,
-                            child: CustomPaint(
-                              size: Size.infinite,
-                              painter: FretboardPainter(
-                                rootNote: rootNote, activeNotes: activeNotes, tuning: tuning,
-                                labelMode: labelMode, isLeftHanded: isLeftHanded, woodType: woodType,
-                                inlayStyle: inlayStyle, showStars: showStars, starIntensity: starIntensity,
-                                fretWidth: _fretWidth,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                ),
-                Positioned(
-                  top: 40, left: 20,
-                  child: Opacity(
-                    opacity: 0.5,
-                    child: FloatingActionButton(
-                      mini: true, backgroundColor: Colors.black87,
-                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                      child: const Icon(Icons.menu, color: Colors.orange),
+          // 1. THE FRETBOARD FOUNDATION
+          Positioned.fill(
+            child: Center(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: 26 * _fretWidth,
+                  // Tucked up slightly to make room for the slider underneath
+                  height: MediaQuery.of(context).size.height * 0.82,
+                  child: CustomPaint(
+                    painter: FretboardPainter(
+                      rootNote: rootNote, activeNotes: activeNotes, tuning: tuning,
+                      labelMode: labelMode, isLeftHanded: isLeftHanded, woodType: woodType,
+                      inlayStyle: inlayStyle, showStars: showStars, starIntensity: starIntensity,
+                      fretWidth: _fretWidth,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
+
+          // 2. THE LANDSCAPE AD (Bottom Left - Kept low)
+          if (!isPortrait && _isAdLoaded && _bannerAd != null)
+            Positioned(
+              left: 10,
+              bottom: 5,
+              child: SafeArea(
+                child: SizedBox(
+                  width: _bannerAd!.size.width.toDouble(),
+                  height: _bannerAd!.size.height.toDouble(),
+                  child: AdWidget(ad: _bannerAd!),
+                ),
+              ),
+            ),
+
+          // 3. THE ZOOM SLIDER (Bottom Right - Tucked just under the numbers)
+          if (!isPortrait)
+            Positioned(
+              right: 20,
+              bottom: 35, // Positioned to clear system bar but hug numbers
+              child: SafeArea(
+                child: Container(
+                  width: 180,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.zoom_out, color: Colors.orange, size: 14),
+                      Expanded(
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            overlayShape: SliderComponentShape.noOverlay,
+                            trackHeight: 2,
+                          ),
+                          child: Slider(
+                            value: _fretWidth.clamp(35.0, 180.0),
+                            min: 35.0,
+                            max: 180.0,
+                            activeColor: Colors.orange,
+                            inactiveColor: Colors.orange.withOpacity(0.2),
+                            onChanged: (v) => setState(() => _fretWidth = v),
+                            onChangeEnd: (v) => prefs.setDouble('fretWidth', v),
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.zoom_in, color: Colors.orange, size: 14),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // 4. PORTRAIT AD (Centered low)
           if (isPortrait && _isAdLoaded && _bannerAd != null)
-            SafeArea(top: false, child: SizedBox(width: _bannerAd!.size.width.toDouble(), height: _bannerAd!.size.height.toDouble(), child: AdWidget(ad: _bannerAd!))),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: SizedBox(
+                    width: _bannerAd!.size.width.toDouble(),
+                    height: _bannerAd!.size.height.toDouble(),
+                    child: AdWidget(ad: _bannerAd!),
+                  ),
+                ),
+              ),
+            ),
+
+          // 5. THE MENU BUTTON (Top Left)
+          Positioned(
+            top: 40, left: 20,
+            child: Opacity(
+              opacity: 0.5,
+              child: FloatingActionButton(
+                mini: true, backgroundColor: Colors.black87,
+                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                child: const Icon(Icons.menu, color: Colors.orange),
+              ),
+            ),
+          ),
         ],
       ),
     );

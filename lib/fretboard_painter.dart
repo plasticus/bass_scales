@@ -34,8 +34,9 @@ class FretboardPainter extends CustomPainter {
     final double chartHeight = size.height - 30;
     final double stringHeight = chartHeight / (stringCount + 1);
 
+    // 1. BIGGER LETTERS: Decoupled from fretWidth to stay legible
     final double circleSize = (fretWidth * 0.28).clamp(18.0, 32.0);
-    final double fontSize = (fretWidth * 0.20).clamp(12.0, 22.0);
+    final double fontSize = (fretWidth * 0.12 + 22.0).clamp(24.0, 38.0);
 
     if (showStars) {
       final random = math.Random(42);
@@ -52,6 +53,7 @@ class FretboardPainter extends CustomPainter {
 
     _drawInlays(canvas, chartHeight, fretWidth, stringHeight);
 
+    // Draw Frets and Numbers
     for (int i = 0; i <= 24; i++) {
       double x = (i + 1) * fretWidth;
       if (i == 0) {
@@ -69,18 +71,22 @@ class FretboardPainter extends CustomPainter {
           textDirection: TextDirection.ltr,
         )..layout();
 
+        // 3. TIGHTER NUMBERS: Moved up to hug the fretboard
+        double numberY = chartHeight - (stringHeight * 0.45);
+
         if (isLeftHanded) {
            canvas.save();
-           canvas.translate(x, chartHeight + 4);
+           canvas.translate(x, numberY);
            canvas.scale(-1, 1);
            numPainter.paint(canvas, Offset(-numPainter.width / 2, 0));
            canvas.restore();
         } else {
-           numPainter.paint(canvas, Offset(x - numPainter.width / 2, chartHeight + 4));
+           numPainter.paint(canvas, Offset(x - numPainter.width / 2, numberY));
         }
       }
     }
 
+    // Draw Strings and Notes
     for (int i = 0; i < tuning.length; i++) {
       double y = (i + 1) * stringHeight;
       paint.color = Colors.grey[400]!;
