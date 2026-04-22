@@ -49,8 +49,8 @@ class _FretboardPageState extends State<FretboardPage> {
   double starIntensity = 0.5;
   bool keepAwake = false;
 
-  // ACCORDION ZOOM STATE
-  double _fretWidth = 100.0;
+  // NEW ACCORDION ZOOM STATE
+  double _visibleFrets = 13.0;
 
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
@@ -59,8 +59,7 @@ class _FretboardPageState extends State<FretboardPage> {
   @override
   void initState() {
     super.initState();
-    // Calculate 12-fret default on the first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPreferences());
+    _loadPreferences();
     _initBannerAd();
   }
 
@@ -85,9 +84,9 @@ class _FretboardPageState extends State<FretboardPage> {
   Future<void> _loadPreferences() async {
     prefs = await SharedPreferences.getInstance();
 
-    // Calculate the "High Noon" 12-fret default for this specific screen
-    double screenWidth = MediaQuery.of(context).size.width;
-    double default12FretWidth = screenWidth / 12.5;
+    // Use a temporary context-aware check for the initial default
+    // We'll handle the orientation switch dynamically in the build method too
+    bool isPortrait = WidgetsBinding.instance.platformDispatcher.views.first.physicalSize.aspectRatio < 1.0;
 
     setState(() {
       rootNote = prefs.getString('rootNote') ?? 'E';
@@ -103,8 +102,9 @@ class _FretboardPageState extends State<FretboardPage> {
       keepAwake = prefs.getBool('keepAwake') ?? false;
       languageCode = prefs.getString('languageCode') ?? 'en';
 
-      // Load saved width or fall back to the 12-fret default
-      _fretWidth = prefs.getDouble('fretWidth') ?? default12FretWidth;
+      // Smart Default: 5 frets for portrait, 13 for landscape
+      double defaultZoom = isPortrait ? 5.0 : 13.0;
+      _visibleFrets = prefs.getDouble('visibleFrets') ?? defaultZoom;
     });
     if (keepAwake) WakelockPlus.enable();
   }
@@ -143,6 +143,9 @@ class _FretboardPageState extends State<FretboardPage> {
     List<int> tuning = MusicEngine.instrumentTunings[instrument]![stringCount] ?? MusicEngine.instrumentTunings['Bass']![4]!;
     bool isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
 
+    double screenWidth = MediaQuery.of(context).size.width;
+    double currentFretWidth = screenWidth / _visibleFrets;
+
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.black,
@@ -169,15 +172,14 @@ class _FretboardPageState extends State<FretboardPage> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
-                  width: 26 * _fretWidth,
-                  // Tucked up slightly to make room for the slider underneath
+                  width: 26 * currentFretWidth,
                   height: MediaQuery.of(context).size.height * 0.82,
                   child: CustomPaint(
                     painter: FretboardPainter(
                       rootNote: rootNote, activeNotes: activeNotes, tuning: tuning,
                       labelMode: labelMode, isLeftHanded: isLeftHanded, woodType: woodType,
                       inlayStyle: inlayStyle, showStars: showStars, starIntensity: starIntensity,
-                      fretWidth: _fretWidth,
+                      fretWidth: currentFretWidth,
                     ),
                   ),
                 ),
@@ -185,62 +187,16 @@ class _FretboardPageState extends State<FretboardPage> {
             ),
           ),
 
-          // 2. THE LANDSCAPE AD (Bottom Left - Kept low)
-          if (!isPortrait && _isAdLoaded && _bannerAd != null)
-            Positioned(
-              left: 10,
-              bottom: 5,
-              child: SafeArea(
-                child: SizedBox(
-                  width: _bannerAd!.size.width.toDouble(),
-                  height: _bannerAd!.size.height.toDouble(),
-                  child: AdWidget(ad: _bannerAd!),
-                ),
-              ),
-            ),
-
-          // 3. THE ZOOM SLIDER (Bottom Right - Tucked just under the numbers)
-          if (!isPortrait)
-            Positioned(
-              right: 20,
-              bottom: 35, // Positioned to clear system bar but hug numbers
-              child: SafeArea(
-                child: Container(
-                  width: 180,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.zoom_out, color: Colors.orange, size: 14),
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            overlayShape: SliderComponentShape.noOverlay,
-                            trackHeight: 2,
-                          ),
-                          child: Slider(
-                            value: _fretWidth.clamp(35.0, 180.0),
-                            min: 35.0,
-                            max: 180.0,
-                            activeColor: Colors.orange,
-                            inactiveColor: Colors.orange.withOpacity(0.2),
-                            onChanged: (v) => setState(() => _fretWidth = v),
-                            onChangeEnd: (v) => prefs.setDouble('fretWidth', v),
-                          ),
-                        ),
-                      ),
-                      const Icon(Icons.zoom_in, color: Colors.orange, size: 14),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // 4. PORTRAIT AD (Centered low)
-          if (isPortrait && _isAdLoaded && _bannerAd != null)
+          // 2. THE DYNAMIC AD
+          if (_isAdLoaded && _bannerAd != null)
             Align(
-              alignment: Alignment.bottomCenter,
+              alignment: isPortrait ? Alignment.bottomCenter : Alignment.bottomLeft,
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
+                  padding: EdgeInsets.only(
+                    bottom: 10,
+                    left: isPortrait ? 0 : 10,
+                  ),
                   child: SizedBox(
                     width: _bannerAd!.size.width.toDouble(),
                     height: _bannerAd!.size.height.toDouble(),
@@ -250,7 +206,66 @@ class _FretboardPageState extends State<FretboardPage> {
               ),
             ),
 
-          // 5. THE MENU BUTTON (Top Left)
+          // 3. THE UNIVERSAL ZOOM SLIDER (Now with Portrait Support!)
+          Positioned(
+            left: isPortrait ? 20 : null,
+            right: 20,
+            // If in portrait, sit 70px up to clear the ad; otherwise 35px in landscape
+            bottom: isPortrait ? (_isAdLoaded ? 70 : 20) : 35,
+            child: SafeArea(
+              child: Container(
+                width: isPortrait ? double.infinity : 180,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  children: [
+                    const Icon(Icons.zoom_out, color: Colors.orange, size: 14),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          overlayShape: SliderComponentShape.noOverlay,
+                          trackHeight: 2,
+                        ),
+                        child: Slider(
+                          value: _visibleFrets.clamp(5.0, 24.0),
+                          min: 5.0,
+                          max: 24.0,
+                          activeColor: Colors.orange,
+                          inactiveColor: Colors.orange.withOpacity(0.2),
+                          onChanged: (v) => setState(() => _visibleFrets = v),
+                          onChangeEnd: (v) => prefs.setDouble('visibleFrets', v),
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.zoom_in, color: Colors.orange, size: 14),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // 4. THE SCALE HEADER
+          Align(
+            alignment: Alignment.topCenter,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 15),
+                child: Text(
+                  '$rootNote • $scaleType',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    shadows: [
+                      Shadow(blurRadius: 10, color: Colors.orange.withOpacity(0.3)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // 5. THE MENU BUTTON
           Positioned(
             top: 40, left: 20,
             child: Opacity(

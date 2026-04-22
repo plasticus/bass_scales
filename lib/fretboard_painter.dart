@@ -66,22 +66,25 @@ class FretboardPainter extends CustomPainter {
       canvas.drawLine(Offset(x, stringHeight / 2), Offset(x, chartHeight - stringHeight / 2), paint);
 
       if (i > 0) {
+        double numberX = x - (fretWidth / 2);
+
         final numPainter = TextPainter(
           text: TextSpan(text: i.toString(), style: TextStyle(color: Colors.grey[500], fontSize: 16, fontWeight: FontWeight.bold)),
           textDirection: TextDirection.ltr,
         )..layout();
 
-        // 3. TIGHTER NUMBERS: Moved up to hug the fretboard
         double numberY = chartHeight - (stringHeight * 0.45);
 
         if (isLeftHanded) {
            canvas.save();
-           canvas.translate(x, numberY);
+           // Use numberX here instead of x
+           canvas.translate(numberX, numberY);
            canvas.scale(-1, 1);
            numPainter.paint(canvas, Offset(-numPainter.width / 2, 0));
            canvas.restore();
         } else {
-           numPainter.paint(canvas, Offset(x - numPainter.width / 2, numberY));
+           // Use numberX here instead of x
+           numPainter.paint(canvas, Offset(numberX - numPainter.width / 2, numberY));
         }
       }
     }

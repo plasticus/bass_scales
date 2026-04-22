@@ -23,6 +23,28 @@ class MusicEngine {
     'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11],
     'Melodic Minor': [0, 2, 3, 5, 7, 9, 11],
     'Prometheus': [0, 2, 4, 6, 9, 10],
+    'Phrygian': [0, 1, 3, 5, 7, 8, 10],
+    'Lydian': [0, 2, 4, 6, 7, 9, 11],
+    'Locrian': [0, 1, 3, 5, 6, 8, 10],
+    'Whole Tone': [0, 2, 4, 6, 8, 10],
+    'Diminished': [0, 1, 3, 4, 6, 7, 9, 10],
+    'Hungarian Minor': [0, 2, 3, 6, 7, 8, 11],
+  };
+
+  // CATEGORIZATION MATRICES: Organizing the workbench for high-efficiency access.
+  static const Map<String, List<String>> scaleGroups = {
+    'essentials': ['Major', 'Natural Minor', 'Pentatonic Major', 'Pentatonic Minor', 'Blues'],
+    'modes': ['Dorian', 'Phrygian', 'Lydian', 'Mixolydian', 'Locrian'],
+    'laboratory': [
+      'Harmonic Major',
+      'Harmonic Minor',
+      'Melodic Minor',
+      'Phrygian Dominant',
+      'Hungarian Minor',
+      'Prometheus',
+      'Whole Tone',
+      'Diminished'
+    ],
   };
 
   // VESSEL CALIBRATION MATRICES: Baseline frequency coordinates for standard exploration craft.
@@ -38,7 +60,6 @@ class MusicEngine {
     }
   };
 
-  // THE CORE SYNTHESIS ALGORITHM: Extracts the active energetic nodes from the void.
   static Set<String> calculateNotes(String root, String scaleName) {
     if (!scaleFormulas.containsKey(scaleName)) return {};
     List<int> offsets = scaleFormulas[scaleName]!;
@@ -46,16 +67,14 @@ class MusicEngine {
     return offsets.map((offset) => chromaticScale[(rootIndex + offset) % 12]).toSet();
   }
 
-  // SPATIAL RELATIVITY CALCULATOR: Determines the orbital distance between the root singularity and a target node.
   static String getInterval(String root, String targetNote) {
     int rootIndex = chromaticScale.indexOf(root);
     int noteIndex = chromaticScale.indexOf(targetNote);
-    // Applying modular spacetime physics to find the shortest orbital path
     int distance = (noteIndex - rootIndex + 12) % 12;
     return intervals[distance];
   }
 
-  // LANGUAGES@#%!
+  // LANGUAGES
   static const Map<String, Map<String, String>> translations = {
     'en': {
       'dashboard': 'DASHBOARD',
@@ -86,7 +105,20 @@ class MusicEngine {
       'Intervals': 'Intervals',
       'Bass': 'Bass',
       'Guitar': 'Guitar',
+      // Group Headers
+      'essentials': 'THE ESSENTIALS',
+      'modes': 'THE MODES',
+      'laboratory': 'THE LABORATORY',
+      // Scales with Parenthetical names
+      'Major': 'Major (Ionian)',
+      'Natural Minor': 'Natural Minor (Aeolian)',
       'Harmonic Major': 'Harmonic Major',
+      'Phrygian': 'Phrygian',
+      'Lydian': 'Lydian',
+      'Locrian': 'Locrian',
+      'Whole Tone': 'Whole Tone',
+      'Diminished': 'Diminished',
+      'Hungarian Minor': 'Hungarian Minor',
     },
     'es': {
       'dashboard': 'TABLERO',
@@ -95,7 +127,7 @@ class MusicEngine {
       'scale': 'Escala',
       'labels': 'Etiquetas',
       'instrument': 'INSTRUMENTO',
-      'type': 'Tipo',
+      'type': 'Type',
       'strings': 'Cuerdas',
       'luthier_shop': 'TALLER DE LUTHIER',
       'wood': 'Madera',
@@ -117,7 +149,20 @@ class MusicEngine {
       'Intervals': 'Intervalos',
       'Bass': 'Bajo',
       'Guitar': 'Guitarra',
+      // Group Headers
+      'essentials': 'LO ESENCIAL',
+      'modes': 'LOS MODOS',
+      'laboratory': 'EL LABORATORIO',
+      // Scales
+      'Major': 'Mayor (Jónico)',
+      'Natural Minor': 'Menor Natural (Eólico)',
       'Harmonic Major': 'Mayor Armónica',
+      'Phrygian': 'Frigio',
+      'Lydian': 'Lidio',
+      'Locrian': 'Locrio',
+      'Whole Tone': 'Escala de Tonos',
+      'Diminished': 'Disminuida',
+      'Hungarian Minor': 'Menor Húngara',
     }
   };
 }

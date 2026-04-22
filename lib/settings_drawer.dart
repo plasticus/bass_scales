@@ -43,10 +43,15 @@ class SettingsDrawer extends StatelessWidget {
       child: ListView(
         children: [
           DrawerHeader(child: Center(child: Text(t('dashboard'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
+
           _sectionHeader(t('scale_settings')),
           _buildDropdown(t('root'), rootNote, MusicEngine.chromaticScale, (v) => onSettingChanged('rootNote', v)),
-          _buildDropdown(t('scale'), scaleType, MusicEngine.scaleFormulas.keys.toList(), (v) => onSettingChanged('scaleType', v)),
-          _buildDropdown(t('labels'), labelMode, ['Notes', 'Intervals', 'None'], (v) => onSettingChanged('labelMode', v)),
+
+          // THE NEW GROUPED SCALE PICKER
+          _buildGroupedScalePicker(context),
+
+          _buildDropdown(t('labels'), labelMode, ['Notes', 'Intervals', 'None'], (v) => onSettingChanged('labelMode', v), formatLabel: (l) => t(l)),
+
           _sectionHeader(t('instrument')),
           _buildToggle(t('type'), ['Bass', 'Guitar'], instrument, (v) => onSettingChanged('instrument', v), formatLabel: (label) => t(label)),
           _buildStringCountToggle(),
@@ -56,23 +61,28 @@ class SettingsDrawer extends StatelessWidget {
             value: isLeftHanded,
             onChanged: (v) => onSettingChanged('isLeftHanded', v),
           ),
+
           _sectionHeader(t('luthier_shop')),
           _buildToggle(t('wood'), ['Rosewood', 'Maple', 'Clear'], woodType, (v) => onSettingChanged('woodType', v), formatLabel: (label) => t(label)),
-          _buildDropdown(t('inlays'), inlayStyle, ['Quasar', 'Dots', 'Blocks', 'None'], (v) => onSettingChanged('inlayStyle', v)),
+          _buildDropdown(t('inlays'), inlayStyle, ['Quasar', 'Dots', 'Blocks', 'None'], (v) => onSettingChanged('inlayStyle', v), formatLabel: (l) => t(l)),
+
           _sectionHeader(t('cosmic')),
           SwitchListTile(
             title: Text(t('starfield')),
             value: showStars,
             onChanged: (v) => onSettingChanged('showStars', v),
           ),
+
           _sectionHeader(t('performance')),
           SwitchListTile(
             title: Text(t('keep_awake')),
             value: keepAwake,
             onChanged: (v) => onToggleWakelock(),
           ),
+
           _sectionHeader('LANGUAGE / IDIOMA'),
           _buildToggle('Lang', ['en', 'es'], languageCode, (v) => onSettingChanged('languageCode', v)),
+
           ListTile(
             title: Text("${t('by_author')} LowEndLabs"),
             subtitle: Text(t('visit_website')),
@@ -88,13 +98,45 @@ class SettingsDrawer extends StatelessWidget {
     child: Text(title, style: const TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
   );
 
-  Widget _buildDropdown(String label, String value, List<String> items, ValueChanged<String?> onChanged) {
+  Widget _buildGroupedScalePicker(BuildContext context) {
+    return ExpansionTile(
+      leading: const Icon(Icons.music_note, color: Colors.orange),
+      title: Text("${t('scale')}: ${t(scaleType)}"),
+      children: MusicEngine.scaleGroups.entries.map((entry) {
+        String groupKey = entry.key;
+        List<String> scales = entry.value;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.orange.withOpacity(0.1),
+              child: Text(t(groupKey), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange)),
+            ),
+            ...scales.map((s) => RadioListTile<String>(
+              title: Text(t(s), style: const TextStyle(fontSize: 14)),
+              value: s,
+              groupValue: scaleType,
+              activeColor: Colors.orange,
+              onChanged: (v) {
+                if (v != null) onSettingChanged('scaleType', v);
+              },
+            )),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildDropdown(String label, String value, List<String> items, ValueChanged<String?> onChanged, {String Function(String)? formatLabel}) {
     return ListTile(
       title: Text(label),
       trailing: DropdownButton<String>(
         value: value,
         underline: Container(),
-        items: items.map((e) => DropdownMenuItem(value: e, child: Text(t(e)))).toList(),
+        items: items.map((e) => DropdownMenuItem(value: e, child: Text(formatLabel != null ? formatLabel(e) : t(e)))).toList(),
         onChanged: onChanged
       ),
     );
