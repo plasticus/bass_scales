@@ -162,30 +162,27 @@ class SettingsDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildStringCountToggle() {
-    // Determine which options to show based on the instrument
+Widget _buildStringCountToggle() {
     List<int> options;
     if (instrument == 'Guitar') {
-      options = [6, 7];
+      options = [6, 7, 106]; // Added 106 here
     } else {
-      // 104 is Drop D (4 strings), 105 is Drop A (5 strings)
       options = [4, 5, 6, 104, 105];
     }
 
     return ListTile(
       title: Text(t('strings')),
       trailing: Container(
-        constraints: const BoxConstraints(maxWidth: 220), // Widened to fit labels
+        constraints: const BoxConstraints(maxWidth: 220),
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: ToggleButtons(
             isSelected: options.map((e) => e == stringCount).toList(),
             onPressed: (index) => onSettingChanged('stringCount', options[index]),
             children: options.map((e) {
-              // Map the "ID" numbers back to friendly names
               String label;
-              if (e == 104) {
-                label = 'Drop D';
+              if (e == 104 || e == 106) {
+                label = 'Drop D'; // Both Bass and Guitar can use this label
               } else if (e == 105) {
                 label = 'Drop A';
               } else {
@@ -202,4 +199,3 @@ class SettingsDrawer extends StatelessWidget {
       ),
     );
   }
-}
