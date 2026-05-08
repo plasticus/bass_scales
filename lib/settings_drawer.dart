@@ -163,17 +163,40 @@ class SettingsDrawer extends StatelessWidget {
   }
 
   Widget _buildStringCountToggle() {
-    List<int> options = (instrument == 'Guitar') ? [6, 7] : [4, 5, 6];
+    // Determine which options to show based on the instrument
+    List<int> options;
+    if (instrument == 'Guitar') {
+      options = [6, 7];
+    } else {
+      // 104 is Drop D (4 strings), 105 is Drop A (5 strings)
+      options = [4, 5, 6, 104, 105];
+    }
+
     return ListTile(
       title: Text(t('strings')),
       trailing: Container(
-        constraints: const BoxConstraints(maxWidth: 140),
+        constraints: const BoxConstraints(maxWidth: 220), // Widened to fit labels
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: ToggleButtons(
             isSelected: options.map((e) => e == stringCount).toList(),
             onPressed: (index) => onSettingChanged('stringCount', options[index]),
-            children: options.map((e) => Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text(e.toString()))).toList(),
+            children: options.map((e) {
+              // Map the "ID" numbers back to friendly names
+              String label;
+              if (e == 104) {
+                label = 'Drop D';
+              } else if (e == 105) {
+                label = 'Drop A';
+              } else {
+                label = e.toString();
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(label, style: const TextStyle(fontSize: 12)),
+              );
+            }).toList(),
           ),
         ),
       ),

@@ -35,7 +35,6 @@ class _FretboardPageState extends State<FretboardPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late SharedPreferences prefs;
 
-  // NEURAL TELEMETRY STORAGE
   String languageCode = 'en';
   String rootNote = 'E';
   String scaleType = 'Pentatonic Minor';
@@ -49,7 +48,9 @@ class _FretboardPageState extends State<FretboardPage> {
   double starIntensity = 0.5;
   bool keepAwake = false;
 
-  // NEW ACCORDION ZOOM STATE
+  // Rotation Notice State
+  bool _showRotationNotice = true;
+
   double _visibleFrets = 13.0;
 
   BannerAd? _bannerAd;
@@ -61,6 +62,13 @@ class _FretboardPageState extends State<FretboardPage> {
     super.initState();
     _loadPreferences();
     _initBannerAd();
+
+    // Auto-hide the notice after 5 seconds
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted && _showRotationNotice) {
+        setState(() => _showRotationNotice = false);
+      }
+    });
   }
 
   void _initBannerAd() {
@@ -83,9 +91,6 @@ class _FretboardPageState extends State<FretboardPage> {
 
   Future<void> _loadPreferences() async {
     prefs = await SharedPreferences.getInstance();
-
-    // Use a temporary context-aware check for the initial default
-    // We'll handle the orientation switch dynamically in the build method too
     bool isPortrait = WidgetsBinding.instance.platformDispatcher.views.first.physicalSize.aspectRatio < 1.0;
 
     setState(() {
@@ -102,7 +107,6 @@ class _FretboardPageState extends State<FretboardPage> {
       keepAwake = prefs.getBool('keepAwake') ?? false;
       languageCode = prefs.getString('languageCode') ?? 'en';
 
-      // Smart Default: 5 frets for portrait, 13 for landscape
       double defaultZoom = isPortrait ? 5.0 : 13.0;
       _visibleFrets = prefs.getDouble('visibleFrets') ?? defaultZoom;
     });
@@ -140,9 +144,12 @@ class _FretboardPageState extends State<FretboardPage> {
   @override
   Widget build(BuildContext context) {
     Set<String> activeNotes = MusicEngine.calculateNotes(rootNote, scaleType);
-    List<int> tuning = MusicEngine.instrumentTunings[instrument]![stringCount] ?? MusicEngine.instrumentTunings['Bass']![4]!;
-    bool isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
 
+    // Using the mapped tuning keys (4, 5, 6, 104, 105)
+    List<int> tuning = MusicEngine.instrumentTunings[instrument]?[stringCount] ??
+                      MusicEngine.instrumentTunings['Bass']![4]!;
+
+    bool isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
     double screenWidth = MediaQuery.of(context).size.width;
     double currentFretWidth = screenWidth / _visibleFrets;
 
@@ -166,7 +173,6 @@ class _FretboardPageState extends State<FretboardPage> {
       ),
       body: Stack(
         children: [
-          // 1. THE FRETBOARD FOUNDATION
           Positioned.fill(
             child: Center(
               child: SingleChildScrollView(
@@ -187,16 +193,39 @@ class _FretboardPageState extends State<FretboardPage> {
             ),
           ),
 
-          // 2. THE DYNAMIC AD
+          // THE NEW ROTATION NOTICE
+          if (_showRotationNotice)
+            Align(
+              alignment: Alignment.topCenter,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 60, left: 20, right: 20),
+                  child: Material(
+                    elevation: 8,
+                    color: Colors.orange.withOpacity(0.95),
+                    borderRadius: BorderRadius.circular(12),
+                    child: ListTile(
+                      leading: const Icon(Icons.screen_rotation, color: Colors.black),
+                      title: const Text(
+                        'Rotate device for the best view!',
+                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.check_circle, color: Colors.black),
+                        onPressed: () => setState(() => _showRotationNotice = false),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           if (_isAdLoaded && _bannerAd != null)
             Align(
               alignment: isPortrait ? Alignment.bottomCenter : Alignment.bottomLeft,
               child: SafeArea(
                 child: Padding(
-                  padding: EdgeInsets.only(
-                    bottom: 10,
-                    left: isPortrait ? 0 : 10,
-                  ),
+                  padding: EdgeInsets.only(bottom: 10, left: isPortrait ? 0 : 10),
                   child: SizedBox(
                     width: _bannerAd!.size.width.toDouble(),
                     height: _bannerAd!.size.height.toDouble(),
@@ -206,11 +235,9 @@ class _FretboardPageState extends State<FretboardPage> {
               ),
             ),
 
-          // 3. THE UNIVERSAL ZOOM SLIDER (Now with Portrait Support!)
           Positioned(
             left: isPortrait ? 20 : null,
             right: 20,
-            // If in portrait, sit 70px up to clear the ad; otherwise 35px in landscape
             bottom: isPortrait ? (_isAdLoaded ? 70 : 20) : 35,
             child: SafeArea(
               child: Container(
@@ -243,7 +270,6 @@ class _FretboardPageState extends State<FretboardPage> {
             ),
           ),
 
-          // 4. THE SCALE HEADER
           Align(
             alignment: Alignment.topCenter,
             child: SafeArea(
@@ -256,16 +282,13 @@ class _FretboardPageState extends State<FretboardPage> {
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.2,
-                    shadows: [
-                      Shadow(blurRadius: 10, color: Colors.orange.withOpacity(0.3)),
-                    ],
+                    shadows: [Shadow(blurRadius: 10, color: Colors.orange.withOpacity(0.3))],
                   ),
                 ),
               ),
             ),
           ),
 
-          // 5. THE MENU BUTTON
           Positioned(
             top: 40, left: 20,
             child: Opacity(
