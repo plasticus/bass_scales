@@ -5,7 +5,6 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'music_engine.dart';
 import 'fretboard_painter.dart';
 import 'settings_drawer.dart';
-import 'package:edge_to_edge/edge_to_edge.dart';
 
 // ===========================================================================
 // 1. ENTRY POINT & APP CONFIG
@@ -69,7 +68,10 @@ class _FretboardPageState extends State<FretboardPage> {
   @override
     void initState() {
       super.initState();
-      EdgeToEdge.enable();
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.black, 
+      ));
 
       _loadPreferences();
       _initBannerAd();
