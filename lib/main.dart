@@ -5,6 +5,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'music_engine.dart';
 import 'fretboard_painter.dart';
 import 'settings_drawer.dart';
+import 'package:edge_to_edge/edge_to_edge.dart';
 
 // ===========================================================================
 // 1. ENTRY POINT & APP CONFIG
@@ -66,17 +67,19 @@ class _FretboardPageState extends State<FretboardPage> {
   // 3. LIFECYCLE & INITIALIZATION
   // ===========================================================================
   @override
-  void initState() {
-    super.initState();
-    _loadPreferences();
-    _initBannerAd();
+    void initState() {
+      super.initState();
+      EdgeToEdge.enable();
 
-    Future.delayed(const Duration(seconds: 5), () {
-      if (mounted && _showRotationNotice) {
-        setState(() => _showRotationNotice = false);
-      }
-    });
-  }
+      _loadPreferences();
+      _initBannerAd();
+
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted && _showRotationNotice) {
+          setState(() => _showRotationNotice = false);
+        }
+      });
+    }
 
   void _initBannerAd() {
     _bannerAd = BannerAd(
@@ -289,7 +292,7 @@ class _FretboardPageState extends State<FretboardPage> {
                     borderRadius: BorderRadius.circular(12),
                     child: ListTile(
                       leading: const Icon(Icons.screen_rotation, color: Colors.black),
-                      title: const Text('Rotate device for the best view!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      title: const Text('Try Landscape mode for the best view!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                       trailing: IconButton(icon: const Icon(Icons.check_circle, color: Colors.black), onPressed: () => setState(() => _showRotationNotice = false)),
                     ),
                   ),

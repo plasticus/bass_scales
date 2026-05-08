@@ -38,7 +38,8 @@ dependencies:
   wakelock_plus: ^1.5.1
   url_launcher: ^6.3.2
   shared_preferences: ^2.5.5
-  google_mobile_ads: ^7.0.0
+  google_mobile_ads: ^8.0.0
+  edge_to_edge: ^0.0.2
 
 dev_dependencies:
   flutter_test:
