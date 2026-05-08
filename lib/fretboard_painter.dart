@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'music_engine.dart';
 
+// ===========================================================================
+// 1. FRETBOARD CUSTOM PAINTER
+// ===========================================================================
 class FretboardPainter extends CustomPainter {
   final String rootNote;
   final Set<String> activeNotes;
@@ -21,6 +24,9 @@ class FretboardPainter extends CustomPainter {
     required this.fretWidth,
   });
 
+  // ===========================================================================
+  // 2. MAIN PAINT PIPELINE
+  // ===========================================================================
   @override
   void paint(Canvas canvas, Size size) {
     if (isLeftHanded) {
@@ -34,10 +40,10 @@ class FretboardPainter extends CustomPainter {
     final double chartHeight = size.height - 30;
     final double stringHeight = chartHeight / (stringCount + 1);
 
-    // 1. BIGGER LETTERS: Decoupled from fretWidth to stay legible
     final double circleSize = (fretWidth * 0.28).clamp(18.0, 32.0);
     final double fontSize = (fretWidth * 0.12 + 22.0).clamp(24.0, 38.0);
 
+    // Draw Space Background
     if (showStars) {
       final random = math.Random(42);
       paint.color = Colors.white.withOpacity(starIntensity);
@@ -46,6 +52,7 @@ class FretboardPainter extends CustomPainter {
       }
     }
 
+    // Draw Wood Texture
     if (woodType != 'Clear') {
       paint.color = (woodType == 'Rosewood') ? const Color(0xFF3E2723) : const Color(0xFFFFF9C4);
       canvas.drawRect(Rect.fromLTWH(fretWidth, stringHeight / 2, size.width - fretWidth, chartHeight - stringHeight), paint);
@@ -56,34 +63,25 @@ class FretboardPainter extends CustomPainter {
     // Draw Frets and Numbers
     for (int i = 0; i <= 24; i++) {
       double x = (i + 1) * fretWidth;
-      if (i == 0) {
-        paint.color = Colors.white;
-        paint.strokeWidth = 12;
-      } else {
-        paint.color = const Color(0xFFBDBDBD);
-        paint.strokeWidth = 4;
-      }
+      paint.color = (i == 0) ? Colors.white : const Color(0xFFBDBDBD);
+      paint.strokeWidth = (i == 0) ? 12 : 4;
       canvas.drawLine(Offset(x, stringHeight / 2), Offset(x, chartHeight - stringHeight / 2), paint);
 
       if (i > 0) {
         double numberX = x - (fretWidth / 2);
-
         final numPainter = TextPainter(
           text: TextSpan(text: i.toString(), style: TextStyle(color: Colors.grey[500], fontSize: 16, fontWeight: FontWeight.bold)),
           textDirection: TextDirection.ltr,
         )..layout();
-
         double numberY = chartHeight - (stringHeight * 0.45);
 
         if (isLeftHanded) {
            canvas.save();
-           // Use numberX here instead of x
            canvas.translate(numberX, numberY);
            canvas.scale(-1, 1);
            numPainter.paint(canvas, Offset(-numPainter.width / 2, 0));
            canvas.restore();
         } else {
-           // Use numberX here instead of x
            numPainter.paint(canvas, Offset(numberX - numPainter.width / 2, numberY));
         }
       }
@@ -130,11 +128,13 @@ class FretboardPainter extends CustomPainter {
     if (isLeftHanded) canvas.restore();
   }
 
+  // ===========================================================================
+  // 3. COSMETIC HELPERS (INLAYS)
+  // ===========================================================================
   void _drawInlays(Canvas canvas, double chartHeight, double fretWidth, double stringHeight) {
     if (inlayStyle == 'None') return;
     final List<int> markFrets = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
-    final paint = Paint();
-    paint.color = (woodType == 'Maple') ? Colors.black.withOpacity(0.35) : Colors.white.withOpacity(0.50);
+    final paint = Paint()..color = (woodType == 'Maple') ? Colors.black.withOpacity(0.35) : Colors.white.withOpacity(0.50);
 
     for (int f in markFrets) {
       double x = (f + 0.5) * fretWidth;
@@ -159,18 +159,12 @@ class FretboardPainter extends CustomPainter {
   void _drawBigQuasar(Canvas canvas, Offset center, Color color, bool isDouble, double currentFretWidth) {
     final qPaint = Paint()..color = color..strokeWidth = 5;
     final double qScale = (currentFretWidth / 100.0).clamp(0.5, 1.5);
-
     void drawOne(Offset c) {
       canvas.drawCircle(c, 15 * qScale, qPaint);
       canvas.drawLine(Offset(c.dx, c.dy - (60 * qScale)), Offset(c.dx, c.dy + (60 * qScale)), qPaint);
       canvas.drawLine(Offset(c.dx - (35 * qScale), c.dy), Offset(c.dx + (35 * qScale), c.dy), qPaint);
     }
-    if (isDouble) {
-      drawOne(center.translate(0, -80));
-      drawOne(center.translate(0, 80));
-    } else {
-      drawOne(center);
-    }
+    if (isDouble) { drawOne(center.translate(0, -80)); drawOne(center.translate(0, 80)); } else { drawOne(center); }
   }
 
   @override

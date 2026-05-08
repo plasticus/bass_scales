@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'music_engine.dart';
 
+// ===========================================================================
+// 1. SETTINGS DRAWER WIDGET
+// ===========================================================================
 class SettingsDrawer extends StatelessWidget {
   final String languageCode;
   final String rootNote;
@@ -36,6 +39,9 @@ class SettingsDrawer extends StatelessWidget {
 
   String t(String key) => MusicEngine.translations[languageCode]?[key] ?? key;
 
+  // ===========================================================================
+  // 2. MAIN BUILDER
+  // ===========================================================================
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -46,10 +52,7 @@ class SettingsDrawer extends StatelessWidget {
 
           _sectionHeader(t('scale_settings')),
           _buildDropdown(t('root'), rootNote, MusicEngine.chromaticScale, (v) => onSettingChanged('rootNote', v)),
-
-          // THE NEW GROUPED SCALE PICKER
           _buildGroupedScalePicker(context),
-
           _buildDropdown(t('labels'), labelMode, ['Notes', 'Intervals', 'None'], (v) => onSettingChanged('labelMode', v), formatLabel: (l) => t(l)),
 
           _sectionHeader(t('instrument')),
@@ -93,6 +96,9 @@ class SettingsDrawer extends StatelessWidget {
     );
   }
 
+  // ===========================================================================
+  // 3. UI COMPONENT HELPERS
+  // ===========================================================================
   Widget _sectionHeader(String title) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
     child: Text(title, style: const TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
@@ -120,9 +126,7 @@ class SettingsDrawer extends StatelessWidget {
               value: s,
               groupValue: scaleType,
               activeColor: Colors.orange,
-              onChanged: (v) {
-                if (v != null) onSettingChanged('scaleType', v);
-              },
+              onChanged: (v) { if (v != null) onSettingChanged('scaleType', v); },
             )),
           ],
         );
@@ -162,13 +166,8 @@ class SettingsDrawer extends StatelessWidget {
     );
   }
 
-Widget _buildStringCountToggle() {
-    List<int> options;
-    if (instrument == 'Guitar') {
-      options = [6, 7, 106]; // Added 106 here
-    } else {
-      options = [4, 5, 6, 104, 105];
-    }
+  Widget _buildStringCountToggle() {
+    List<int> options = (instrument == 'Guitar') ? [6, 7, 106] : [4, 5, 6, 104, 105];
 
     return ListTile(
       title: Text(t('strings')),
@@ -180,15 +179,7 @@ Widget _buildStringCountToggle() {
             isSelected: options.map((e) => e == stringCount).toList(),
             onPressed: (index) => onSettingChanged('stringCount', options[index]),
             children: options.map((e) {
-              String label;
-              if (e == 104 || e == 106) {
-                label = 'Drop D'; // Both Bass and Guitar can use this label
-              } else if (e == 105) {
-                label = 'Drop A';
-              } else {
-                label = e.toString();
-              }
-
+              String label = (e == 104 || e == 106) ? 'Drop D' : (e == 105) ? 'Drop A' : e.toString();
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Text(label, style: const TextStyle(fontSize: 12)),
@@ -199,3 +190,4 @@ Widget _buildStringCountToggle() {
       ),
     );
   }
+}
