@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:flutter/services.dart';
 import 'music_engine.dart';
 import 'fretboard_painter.dart';
 import 'settings_drawer.dart';
@@ -66,22 +67,28 @@ class _FretboardPageState extends State<FretboardPage> {
   // 3. LIFECYCLE & INITIALIZATION
   // ===========================================================================
   @override
-    void initState() {
-      super.initState();
-      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        systemNavigationBarColor: Colors.black, 
-      ));
+  void initState() {
+    super.initState();
 
-      _loadPreferences();
-      _initBannerAd();
+    // LANDMARK: THE NATIVE EDGE-TO-EDGE FIX
+    // This tells Android 15 to let the app draw behind the system bars
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.transparent,
+      statusBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.light,
+    ));
 
-      Future.delayed(const Duration(seconds: 5), () {
-        if (mounted && _showRotationNotice) {
-          setState(() => _showRotationNotice = false);
-        }
-      });
-    }
+    _loadPreferences();
+    _initBannerAd();
+
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted && _showRotationNotice) {
+        setState(() => _showRotationNotice = false);
+      }
+    });
+  }
 
   void _initBannerAd() {
     _bannerAd = BannerAd(
@@ -156,7 +163,7 @@ class _FretboardPageState extends State<FretboardPage> {
   }
 
   // ===========================================================================
-  // 5. INTERACTIVE HEADER HELPERS (EXPERIMENTAL)
+  // 5. INTERACTIVE HEADER HELPERS
   // ===========================================================================
   Widget _headerChip(String text) {
     return Container(
@@ -173,22 +180,20 @@ class _FretboardPageState extends State<FretboardPage> {
     );
   }
 
-  // --- Section 5: INTERACTIVE HEADER HELPERS ---
-
   void _showRootPicker(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => Align(
         alignment: Alignment.topCenter,
         child: Padding(
-          padding: const EdgeInsets.only(top: 80.0), // Sits it right under the header
+          padding: const EdgeInsets.only(top: 80.0),
           child: Material(
             color: Colors.grey[900],
             borderRadius: BorderRadius.circular(15),
             elevation: 10,
             child: Container(
               width: MediaQuery.of(context).size.width * 0.9,
-              height: 80, // Slim ribbon
+              height: 80,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: MusicEngine.chromaticScale.length,
