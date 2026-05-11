@@ -1,3 +1,4 @@
+import 'ad_config.dart';
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +13,13 @@ import 'settings_drawer.dart';
 // ===========================================================================
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final RequestConfiguration requestConfiguration = RequestConfiguration(
+    tagForChildDirectedTreatment: TagForChildDirectedTreatment.unspecified,
+    testDeviceIds: [], 
+  );
+  MobileAds.instance.updateRequestConfiguration(requestConfiguration);
+
   await MobileAds.instance.initialize();
   runApp(const BassScalesApp());
 }
@@ -61,7 +69,7 @@ class _FretboardPageState extends State<FretboardPage> {
   // --- Ads State ---
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
-  final String _adUnitId = 'ca-app-pub-3940256099942544/6300978111';
+  final String _adUnitId = AdConfig.bannerAdUnitId;
 
   // ===========================================================================
   // 3. LIFECYCLE & INITIALIZATION
