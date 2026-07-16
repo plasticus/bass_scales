@@ -444,7 +444,7 @@ class _FretboardPageState extends State<FretboardPage> {
           // Landmark: 6.4 ZOOM SLIDER
           Positioned(
             left: isPortrait ? 20 : null, right: 20,
-            bottom: isPortrait ? (_isAdLoaded ? 70 : 20) : 35,
+            bottom: isPortrait ? (_isAdLoaded ? 70 : 20) : 20,
             child: SafeArea(
               child: Container(
                 width: isPortrait ? double.infinity : 180,
