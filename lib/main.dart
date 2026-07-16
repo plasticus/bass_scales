@@ -476,7 +476,7 @@ class _FretboardPageState extends State<FretboardPage> {
               top: isPortrait,
               bottom: false,
               child: Padding(
-                padding: EdgeInsets.only(top: isPortrait ? 86 : 20),
+                padding: EdgeInsets.only(top: isPortrait ? 36 : 20),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
