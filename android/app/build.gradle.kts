@@ -60,5 +60,5 @@ android {
 }
 
 flutter {
-    source = "/home/corey/development/bass_scales"
+    source = "../.."
 }

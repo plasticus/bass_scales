@@ -1,4 +1,6 @@
 import 'ad_config.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'music_engine.dart';
 import 'fretboard_painter.dart';
 import 'settings_drawer.dart';
+import 'metronome_service.dart';
+import 'metronome_page.dart';
 
 // ===========================================================================
 // 1. ENTRY POINT & APP CONFIG
@@ -65,9 +69,17 @@ class _FretboardPageState extends State<FretboardPage> {
   bool keepAwake = false;
   bool _showRotationNotice = true;
   double _visibleFrets = 13.0;
+  Timer? _rotationNoticeTimer;
+
+  // --- Metronome State ---
+  late MetronomeEngine _metronomeEngine;
+  bool metronomeEnabled = false;
+  int metronomeBpm = 110;
+  String metronomeTimeSignature = '4/4';
+  String metronomeSubdivision = 'Quarter';
+  String metronomeSound = 'Wood block';
 
   // --- Ads State ---
-  BannerAd? _bannerAd;
   bool _isAdLoaded = false;
   final String _adUnitId = AdConfig.bannerAdUnitId;
 
@@ -77,6 +89,11 @@ class _FretboardPageState extends State<FretboardPage> {
   @override
   void initState() {
     super.initState();
+
+    _metronomeEngine = MetronomeEngine();
+    _metronomeEngine.addListener(() {
+      if (mounted) setState(() => metronomeEnabled = _metronomeEngine.enabled);
+    });
 
     // LANDMARK: THE NATIVE EDGE-TO-EDGE FIX
     // This tells Android 15 to let the app draw behind the system bars
@@ -89,30 +106,18 @@ class _FretboardPageState extends State<FretboardPage> {
     ));
 
     _loadPreferences();
-    _initBannerAd();
 
-    Future.delayed(const Duration(seconds: 5), () {
+    _rotationNoticeTimer = Timer(const Duration(seconds: 5), () {
       if (mounted && _showRotationNotice) {
         setState(() => _showRotationNotice = false);
       }
     });
   }
 
-  void _initBannerAd() {
-    _bannerAd = BannerAd(
-      adUnitId: _adUnitId,
-      size: AdSize.banner,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (ad) => setState(() => _isAdLoaded = true),
-        onAdFailedToLoad: (ad, error) { ad.dispose(); },
-      ),
-    )..load();
-  }
-
   @override
   void dispose() {
-    _bannerAd?.dispose();
+    _rotationNoticeTimer?.cancel();
+    _metronomeEngine.dispose();
     super.dispose();
   }
 
@@ -138,7 +143,20 @@ class _FretboardPageState extends State<FretboardPage> {
       languageCode = prefs.getString('languageCode') ?? 'en';
       double defaultZoom = isPortrait ? 5.0 : 13.0;
       _visibleFrets = prefs.getDouble('visibleFrets') ?? defaultZoom;
+
+      metronomeEnabled = prefs.getBool('metronomeEnabled') ?? false;
+      metronomeBpm = prefs.getInt('metronomeBpm') ?? 110;
+      metronomeTimeSignature = prefs.getString('metronomeTimeSignature') ?? '4/4';
+      metronomeSubdivision = prefs.getString('metronomeSubdivision') ?? 'Quarter';
+      metronomeSound = prefs.getString('metronomeSound') ?? 'Wood block';
     });
+
+    _metronomeEngine.bpm = metronomeBpm;
+    _metronomeEngine.timeSignature = metronomeTimeSignature;
+    _metronomeEngine.subdivision = metronomeSubdivision;
+    _metronomeEngine.soundType = metronomeSound;
+    if (metronomeEnabled) _metronomeEngine.start();
+
     if (keepAwake) WakelockPlus.enable();
   }
 
@@ -171,7 +189,92 @@ class _FretboardPageState extends State<FretboardPage> {
   }
 
   // ===========================================================================
-  // 5. INTERACTIVE HEADER HELPERS
+  // 5. METRONOME HELPERS
+  // ===========================================================================
+  void _saveMetronomeSettings() {
+    prefs.setBool('metronomeEnabled', metronomeEnabled);
+    prefs.setInt('metronomeBpm', metronomeBpm);
+    prefs.setString('metronomeTimeSignature', metronomeTimeSignature);
+    prefs.setString('metronomeSubdivision', metronomeSubdivision);
+    prefs.setString('metronomeSound', metronomeSound);
+  }
+
+  void _onMetronomeBpmChanged(int value) {
+    setState(() => metronomeBpm = value);
+    _metronomeEngine.bpm = value;
+    _metronomeEngine.reschedule();
+    _saveMetronomeSettings();
+  }
+
+  void _onMetronomeTimeSignatureChanged(String value) {
+    setState(() => metronomeTimeSignature = value);
+    _metronomeEngine.timeSignature = value;
+    _saveMetronomeSettings();
+  }
+
+  void _onMetronomeSubdivisionChanged(String value) {
+    setState(() => metronomeSubdivision = value);
+    _metronomeEngine.subdivision = value;
+    _metronomeEngine.reschedule();
+    _saveMetronomeSettings();
+  }
+
+  void _onMetronomeSoundTypeChanged(String value) {
+    setState(() => metronomeSound = value);
+    _metronomeEngine.soundType = value;
+    _saveMetronomeSettings();
+  }
+
+  void _toggleMetronome() {
+    _metronomeEngine.toggle();
+    setState(() => metronomeEnabled = _metronomeEngine.enabled);
+    _saveMetronomeSettings();
+  }
+
+  void _openMetronomePage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MetronomePage(
+          engine: _metronomeEngine,
+          bpm: metronomeBpm,
+          timeSignature: metronomeTimeSignature,
+          subdivision: metronomeSubdivision,
+          soundType: metronomeSound,
+          onBpmChanged: _onMetronomeBpmChanged,
+          onTimeSignatureChanged: _onMetronomeTimeSignatureChanged,
+          onSubdivisionChanged: _onMetronomeSubdivisionChanged,
+          onSoundTypeChanged: _onMetronomeSoundTypeChanged,
+          onToggle: _toggleMetronome,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniFab({
+    required Widget icon,
+    required VoidCallback onTap,
+    VoidCallback? onLongPress,
+  }) {
+    return Material(
+      color: Colors.black87,
+      elevation: 6,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Center(child: icon),
+        ),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // 6. INTERACTIVE HEADER HELPERS
   // ===========================================================================
   Widget _headerChip(String text) {
     return Container(
@@ -250,7 +353,7 @@ class _FretboardPageState extends State<FretboardPage> {
   }
 
   // ===========================================================================
-  // 6. MAIN UI BUILD METHOD
+  // 7. MAIN UI BUILD METHOD
   // ===========================================================================
   @override
   Widget build(BuildContext context) {
@@ -316,16 +419,27 @@ class _FretboardPageState extends State<FretboardPage> {
             ),
 
           // Landmark: 6.3 AD LAYER
-          if (_isAdLoaded && _bannerAd != null)
-            Align(
-              alignment: isPortrait ? Alignment.bottomCenter : Alignment.bottomLeft,
-              child: SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: 10, left: isPortrait ? 0 : 10),
-                  child: SizedBox(width: _bannerAd!.size.width.toDouble(), height: _bannerAd!.size.height.toDouble(), child: AdWidget(ad: _bannerAd!)),
+          // Keep the banner widget in the tree (Offstage) so the AdWidget's
+          // element isn't repeatedly mounted/unmounted, which causes the
+          // "AdWidget is already in the Widget tree" error.
+          Align(
+            alignment: isPortrait ? Alignment.bottomCenter : Alignment.bottomLeft,
+            child: SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 10, left: isPortrait ? 0 : 10),
+                child: Offstage(
+                  offstage: !_isAdLoaded,
+                  child: _AdBanner(
+                    adUnitId: _adUnitId,
+                    adSize: AdSize.banner,
+                    onLoaded: () {
+                      if (!_isAdLoaded && mounted) setState(() => _isAdLoaded = true);
+                    },
+                  ),
                 ),
               ),
             ),
+          ),
 
           // Landmark: 6.4 ZOOM SLIDER
           Positioned(
@@ -352,11 +466,15 @@ class _FretboardPageState extends State<FretboardPage> {
           ),
 
           // Landmark: 6.5 INTERACTIVE HEADER
+          // In landscape, sit high near the status bar. In portrait, keep a
+          // conservative gap from the status bar and drop below the menu row
+          // so the chips don't overlap the hamburger / metronome buttons.
           Align(
             alignment: Alignment.topCenter,
             child: SafeArea(
+              bottom: false,
               child: Padding(
-                padding: const EdgeInsets.only(top: 10),
+                padding: EdgeInsets.only(top: isPortrait ? 86 : 8),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -369,20 +487,102 @@ class _FretboardPageState extends State<FretboardPage> {
             ),
           ),
 
-          // Landmark: 6.6 MENU BUTTON
+          // Landmark: 7.6 MENU & METRONOME BUTTONS
           Positioned(
-            top: 40, left: 20,
+            top: isPortrait ? 40 : 8, left: 20,
             child: Opacity(
               opacity: 0.5,
-              child: FloatingActionButton(
-                mini: true, backgroundColor: Colors.black87,
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                child: const Icon(Icons.menu, color: Colors.orange),
+              child: Row(
+                children: [
+                  FloatingActionButton(
+                    mini: true, backgroundColor: Colors.black87,
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    child: const Icon(Icons.menu, color: Colors.orange),
+                  ),
+                  const SizedBox(width: 12),
+                  _buildMiniFab(
+                    icon: Image.asset(
+                      'assets/metronome_icon.png',
+                      width: 24,
+                      height: 24,
+                      color: _metronomeEngine.enabled ? Colors.redAccent : Colors.orange,
+                      colorBlendMode: BlendMode.srcIn,
+                    ),
+                    onTap: _openMetronomePage,
+                    onLongPress: _toggleMetronome,
+                  ),
+                ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+// ===========================================================================
+// 8. BANNER AD WIDGET
+// ===========================================================================
+// Wraps the AdWidget in its own StatefulWidget so the AdWidget instance stays
+// stable across rebuilds of the parent. This avoids the "AdWidget is already
+// in the Widget tree" error from google_mobile_ads.
+class _AdBanner extends StatefulWidget {
+  final String adUnitId;
+  final AdSize adSize;
+  final VoidCallback? onLoaded;
+
+  const _AdBanner({
+    required this.adUnitId,
+    required this.adSize,
+    this.onLoaded,
+  });
+
+  @override
+  State<_AdBanner> createState() => _AdBannerState();
+}
+
+class _AdBannerState extends State<_AdBanner> {
+  BannerAd? _bannerAd;
+  AdWidget? _adWidget;
+  bool _isLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bannerAd = BannerAd(
+      adUnitId: widget.adUnitId,
+      size: widget.adSize,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          if (!mounted) return;
+          _adWidget = AdWidget(ad: _bannerAd!);
+          setState(() => _isLoaded = true);
+          widget.onLoaded?.call();
+        },
+        onAdFailedToLoad: (ad, error) => ad.dispose(),
+      ),
+    )..load();
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isLoaded || _bannerAd == null || _adWidget == null) {
+      return SizedBox(
+        width: widget.adSize.width.toDouble(),
+        height: widget.adSize.height.toDouble(),
+      );
+    }
+    return SizedBox(
+      width: _bannerAd!.size.width.toDouble(),
+      height: _bannerAd!.size.height.toDouble(),
+      child: _adWidget,
     );
   }
 }
