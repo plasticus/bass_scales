@@ -42,3 +42,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 lib/ad_config.dart
+/android/key.properties
+/android/app/upload-keystore.jks
+/android/upload_certificate.pem
