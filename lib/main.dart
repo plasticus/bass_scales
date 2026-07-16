@@ -466,15 +466,17 @@ class _FretboardPageState extends State<FretboardPage> {
           ),
 
           // Landmark: 6.5 INTERACTIVE HEADER
-          // In landscape, sit high near the status bar. In portrait, keep a
-          // conservative gap from the status bar and drop below the menu row
-          // so the chips don't overlap the hamburger / metronome buttons.
+          // In landscape, disable top SafeArea padding so the chips can sit
+          // high and clear the fretboard; align their top edge with the menu
+          // row. In portrait, keep a conservative gap from the status bar and
+          // drop below the menu row so the chips don't overlap the buttons.
           Align(
             alignment: Alignment.topCenter,
             child: SafeArea(
+              top: isPortrait,
               bottom: false,
               child: Padding(
-                padding: EdgeInsets.only(top: isPortrait ? 86 : 8),
+                padding: EdgeInsets.only(top: isPortrait ? 86 : 20),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -489,7 +491,7 @@ class _FretboardPageState extends State<FretboardPage> {
 
           // Landmark: 7.6 MENU & METRONOME BUTTONS
           Positioned(
-            top: isPortrait ? 40 : 8, left: 20,
+            top: isPortrait ? 40 : 20, left: 20,
             child: Opacity(
               opacity: 0.5,
               child: Row(
