@@ -20,7 +20,7 @@ void main() async {
 
   final RequestConfiguration requestConfiguration = RequestConfiguration(
     tagForChildDirectedTreatment: TagForChildDirectedTreatment.unspecified,
-    testDeviceIds: [],
+    testDeviceIds: ['4A024B8A3AEB65EAEDED5BCFC8B86EA9'],
   );
   MobileAds.instance.updateRequestConfiguration(requestConfiguration);
 
