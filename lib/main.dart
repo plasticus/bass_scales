@@ -476,7 +476,7 @@ class _FretboardPageState extends State<FretboardPage> {
               top: isPortrait,
               bottom: false,
               child: Padding(
-                padding: EdgeInsets.only(top: isPortrait ? 36 : 20),
+                padding: EdgeInsets.only(top: isPortrait ? 56 : 20),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -491,7 +491,7 @@ class _FretboardPageState extends State<FretboardPage> {
 
           // Landmark: 7.6 MENU & METRONOME BUTTONS
           Positioned(
-            top: isPortrait ? 40 : 20, left: 20,
+            top: isPortrait ? 60 : 20, left: 20,
             child: Opacity(
               opacity: 0.5,
               child: Row(
